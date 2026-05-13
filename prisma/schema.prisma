@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Profile {
+  id                 String   @id @default(cuid())
+  email              String   @unique
+  name               String?
+  preferredModes     String[] @default([])
+  avoidMotorcycleRain Boolean @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  routeHistory RouteHistory[]
+
+  @@map("profiles")
+}
+
+model WeatherCache {
+  id               String   @id @default(cuid())
+  lat              Float
+  lng              Float
+  intensity        String
+  rainfallMmPerHour Float
+  description      String
+  source           String
+  fetchedAt        DateTime @default(now())
+  expiresAt        DateTime
+
+  @@index([lat, lng])
+  @@index([expiresAt])
+  @@map("weather_cache")
+}
+
+model RouteHistory {
+  id               String   @id @default(cuid())
+  profileId        String?
+  profile          Profile? @relation(fields: [profileId], references: [id], onDelete: SetNull)
+
+  originLat        Float
+  originLng        Float
+  destinationLat   Float
+  destinationLng   Float
+
+  chosenMode       String
+  weatherIntensity String
+  discomfortScore  Float
+  routeLabel       String
+
+  createdAt        DateTime @default(now())
+
+  @@index([profileId])
+  @@index([createdAt])
+  @@map("routes_history")
+}
