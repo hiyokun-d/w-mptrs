@@ -13,6 +13,7 @@ import {
   FlaskConical, History, CheckCircle2, ShieldAlert, Layers,
   Footprints, ArrowDownToLine, ArrowUpFromLine, ChevronsRight,
   LayoutList, X, Search, Banknote, Timer, AlarmClock,
+  TrendingUp, Activity, BarChart2, Droplets,
 } from "lucide-react";
 import type { RouteSegment } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -82,6 +83,53 @@ const SIM_PRESETS: Record<RainfallIntensity, { windSpeedKmh: number; humidityPct
   extreme:  { windSpeedKmh: 55, humidityPct: 98 },
 };
 
+// ── IEEE research metrics lookup tables ─────────────────────────────────────
+// Mirrors ResearchDatasetPanel constants for live route context
+
+const RM_TRAFFIC_DELAY: Record<string, Record<string, number>> = {
+  motorcycle:   { none:1.00, light:1.10, moderate:1.20, heavy:1.30, extreme:1.50 },
+  car:          { none:1.00, light:1.30, moderate:1.60, heavy:2.00, extreme:2.50 },
+  bicycle:      { none:1.00, light:1.00, moderate:1.00, heavy:1.00, extreme:1.00 },
+  walking:      { none:1.00, light:1.00, moderate:1.00, heavy:1.00, extreme:1.00 },
+  transjakarta: { none:1.00, light:1.10, moderate:1.30, heavy:1.50, extreme:1.80 },
+  mrt:          { none:1.00, light:1.00, moderate:1.00, heavy:1.00, extreme:1.00 },
+  lrt:          { none:1.00, light:1.00, moderate:1.00, heavy:1.00, extreme:1.00 },
+  krl:          { none:1.00, light:1.00, moderate:1.00, heavy:1.00, extreme:1.02 },
+};
+
+const RM_RELIABILITY: Record<string, Record<string, number>> = {
+  motorcycle:   { none:70, light:55, moderate:42, heavy:30, extreme:20 },
+  car:          { none:65, light:50, moderate:38, heavy:25, extreme:15 },
+  bicycle:      { none:75, light:45, moderate:30, heavy:18, extreme:10 },
+  walking:      { none:80, light:70, moderate:60, heavy:50, extreme:40 },
+  transjakarta: { none:72, light:65, moderate:58, heavy:45, extreme:30 },
+  mrt:          { none:96, light:95, moderate:95, heavy:94, extreme:92 },
+  lrt:          { none:93, light:92, moderate:91, heavy:90, extreme:88 },
+  krl:          { none:88, light:86, moderate:83, heavy:78, extreme:65 },
+};
+
+// Flood zone estimation from lat/lng (BPBD DKI Jakarta susceptibility map 2024–2025)
+function estimateFloodZone(
+  origin: Coordinates | null,
+  dest: Coordinates | null,
+): "low" | "medium" | "high" {
+  const pts = [origin, dest].filter(Boolean) as Coordinates[];
+  const order = ["low", "medium", "high"] as const;
+  let maxIdx = 0;
+  for (const { lat, lng } of pts) {
+    let idx = 0;
+    if (lng < 106.73)                                                              idx = 2; // Cengkareng corridor
+    else if (lat > -6.115 && lng > 106.875)                                        idx = 2; // Tanjung Priok
+    else if (lng > 106.96)                                                         idx = 2; // Bekasi flood plain
+    else if (lat > -6.24 && lat < -6.19 && lng > 106.855 && lng < 106.89)        idx = 2; // Kampung Arus / Jatinegara
+    else if (lat > -6.185 && lat < -6.15 && lng > 106.83 && lng < 106.865)       idx = 1; // Kemayoran / Grogol
+    else if (lat > -6.26 && lat < -6.22 && lng > 106.845 && lng < 106.895)       idx = 1; // Tebet / Manggarai
+    else if (lat > -6.18 && lat < -6.13 && lng > 106.84 && lng < 106.875)        idx = 1; // Kemayoran–Bundaran HI corridor
+    if (idx > maxIdx) maxIdx = idx;
+  }
+  return order[maxIdx];
+}
+
 // ── types ────────────────────────────────────────────────────────────────────
 
 interface HistoryEntry {
@@ -93,6 +141,12 @@ interface HistoryEntry {
   discomfortScore: number;
   routeLabel: string;
   createdAt: string;
+  // IEEE parameters (optional — saved since 2026-05-15)
+  trafficDelayIndex?: number | null;
+  floodRiskZone?: string | null;
+  modeReliabilityIndex?: number | null;
+  timeSacrificeRatio?: number | null;
+  compositeScore?: number | null;
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -123,9 +177,10 @@ export default function AppDemo() {
     setSimulation, setLoading, setError, isLoading, error, reset,
   } = store;
 
-  const [viewMode, setViewMode]             = useState<"app" | "research">("app");
-  const [showBreakdown, setShowBreakdown]   = useState(false);
-  const [showStorePanel, setShowStorePanel] = useState(false);
+  const [viewMode, setViewMode]               = useState<"app" | "research">("app");
+  const [showBreakdown, setShowBreakdown]     = useState(false);
+  const [showResearchMetrics, setShowResearchMetrics] = useState(false);
+  const [showStorePanel, setShowStorePanel]   = useState(false);
   const [history, setHistory]               = useState<HistoryEntry[]>([]);
   const [saving, setSaving]                 = useState(false);
   const [saved, setSaved]                   = useState(false);
@@ -272,13 +327,28 @@ export default function AppDemo() {
     const chosen = routes.find((r) => r.id === selectedRoute);
     if (!chosen) return;
     setSaving(true);
+    const chosenMode = chosen.segments[0]?.mode ?? "unknown";
+    const etaMin = Math.round(chosen.totalDurationSeconds / 60);
+    const fast = routes.find((r) => r.label === "fastest");
+    const fastEtaMin = fast ? Math.round(fast.totalDurationSeconds / 60) : etaMin;
+    const composite = Math.round((0.35 * etaMin + 0.65 * chosen.discomfortScore) * 10) / 10;
     try {
       await axios.post("/api/history", {
         origin, destination,
-        chosenMode: chosen.segments[0]?.mode ?? "unknown",
+        chosenMode,
         weatherIntensity: activeIntensity,
         discomfortScore: chosen.discomfortScore,
         routeLabel: chosen.label,
+        // IEEE parameters
+        trafficDelayIndex: RM_TRAFFIC_DELAY[chosenMode]?.[activeIntensity] ?? 1.0,
+        floodRiskZone: estimateFloodZone(origin, destination),
+        floodPenalty: 0,
+        modeReliabilityIndex: RM_RELIABILITY[chosenMode]?.[activeIntensity] ?? 50,
+        timeSacrificeRatio: fastEtaMin > 0
+          ? Math.round((etaMin - fastEtaMin) / fastEtaMin * 100 * 10) / 10
+          : 0,
+        totalEtaMin: etaMin,
+        compositeScore: composite,
       });
       setSaved(true);
     } finally {
@@ -493,6 +563,7 @@ export default function AppDemo() {
                   selected={selectedRoute === "fastest"}
                   onClick={() => setSelectedRoute("fastest")}
                   accent="orange"
+                  intensity={activeIntensity}
                 />
                 <RouteCard
                   route={weatherAware}
@@ -500,6 +571,7 @@ export default function AppDemo() {
                   onClick={() => setSelectedRoute("weather_aware")}
                   accent="sky"
                   recommended={shift?.shouldShift ?? false}
+                  intensity={activeIntensity}
                 />
               </div>
 
@@ -579,6 +651,38 @@ export default function AppDemo() {
                 )}
               </AnimatePresence>
 
+              {/* Research metrics toggle */}
+              {fastest && weatherAware && (
+                <>
+                  <button
+                    onClick={() => setShowResearchMetrics((v) => !v)}
+                    className="flex items-center gap-1.5 text-[11px] text-slate-500 hover:text-slate-300 transition-colors"
+                  >
+                    <BarChart2 size={12} />
+                    IEEE research metrics
+                    {showResearchMetrics ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  </button>
+                  <AnimatePresence>
+                    {showResearchMetrics && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <ResearchMetricsPanel
+                          fastest={fastest}
+                          weatherAware={weatherAware}
+                          intensity={activeIntensity}
+                          origin={origin}
+                          dest={destination}
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </>
+              )}
+
               {/* Save / saved */}
               <div className="flex gap-2">
                 <Button
@@ -608,20 +712,55 @@ export default function AppDemo() {
                   key={h.id}
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="flex items-center gap-2 text-[11px] bg-slate-800/40 rounded-lg px-3 py-2 border border-slate-700/30"
+                  className="text-[11px] bg-slate-800/40 rounded-lg px-3 py-2 border border-slate-700/30 space-y-1"
                 >
-                  <span className="font-mono text-slate-500 shrink-0">
-                    {new Date(h.createdAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                  <ArrowRight size={10} className="text-slate-600 shrink-0" />
-                  <span className="text-slate-300 capitalize">{h.chosenMode}</span>
-                  <span className="ml-auto font-mono">
-                    <span className={scoreColor(h.discomfortScore)}>{h.discomfortScore}</span>
-                    <span className="text-slate-600"> pts</span>
-                  </span>
-                  <Badge variant="outline" className="text-[9px] py-0 px-1.5 capitalize">
-                    {h.weatherIntensity}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-slate-500 shrink-0">
+                      {new Date(h.createdAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                    <ArrowRight size={10} className="text-slate-600 shrink-0" />
+                    <span className="text-slate-300 capitalize">{h.chosenMode}</span>
+                    <span className="ml-auto font-mono">
+                      <span className={scoreColor(h.discomfortScore)}>{h.discomfortScore}</span>
+                      <span className="text-slate-600"> pts</span>
+                    </span>
+                    <Badge variant="outline" className="text-[9px] py-0 px-1.5 capitalize">
+                      {h.weatherIntensity}
+                    </Badge>
+                  </div>
+                  {(h.compositeScore != null || h.modeReliabilityIndex != null) && (
+                    <div className="flex items-center gap-3 text-[10px] font-mono text-slate-600 pt-0.5 border-t border-slate-700/20">
+                      {h.compositeScore != null && (
+                        <span className="flex items-center gap-1">
+                          <BarChart2 size={9} className="text-slate-600" />
+                          composite <span className="text-slate-400">{h.compositeScore}</span>
+                        </span>
+                      )}
+                      {h.modeReliabilityIndex != null && (
+                        <span className="flex items-center gap-1">
+                          <Activity size={9} className="text-slate-600" />
+                          <span className={h.modeReliabilityIndex >= 80 ? "text-emerald-500" : h.modeReliabilityIndex >= 55 ? "text-yellow-500" : "text-red-500"}>
+                            {h.modeReliabilityIndex}
+                          </span>
+                          <span>/100</span>
+                        </span>
+                      )}
+                      {h.floodRiskZone && h.floodRiskZone !== "low" && (
+                        <span className={cn("flex items-center gap-1",
+                          h.floodRiskZone === "high" ? "text-red-500" : "text-orange-500"
+                        )}>
+                          <Droplets size={9} />
+                          {h.floodRiskZone}
+                        </span>
+                      )}
+                      {h.timeSacrificeRatio != null && h.timeSacrificeRatio > 0 && (
+                        <span className="flex items-center gap-1">
+                          <Clock size={9} className="text-slate-600" />
+                          <span className="text-slate-400">+{h.timeSacrificeRatio}%</span>
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </motion.div>
               ))}
             </div>
@@ -998,13 +1137,14 @@ function WeatherCard({
 }
 
 function RouteCard({
-  route, selected, onClick, accent, recommended,
+  route, selected, onClick, accent, recommended, intensity,
 }: {
   route: RouteOption;
   selected: boolean;
   onClick: () => void;
   accent: "orange" | "sky";
   recommended?: boolean;
+  intensity?: RainfallIntensity;
 }) {
   const accentCls = {
     orange: { border: "border-orange-500/60 bg-orange-500/10", ring: "ring-orange-500/40", dot: "bg-orange-400" },
@@ -1012,6 +1152,12 @@ function RouteCard({
   }[accent];
 
   const primarySeg = route.segments[0];
+  const etaMin = Math.round(route.totalDurationSeconds / 60);
+  const composite = Math.round((0.35 * etaMin + 0.65 * route.discomfortScore) * 10) / 10;
+  const mode = primarySeg?.mode ?? "motorcycle";
+  const int = intensity ?? "none";
+  const reliability = RM_RELIABILITY[mode]?.[int] ?? 50;
+  const reliabilityColor = reliability >= 80 ? "text-emerald-400" : reliability >= 55 ? "text-yellow-400" : "text-red-400";
 
   return (
     <motion.button
@@ -1058,6 +1204,14 @@ function RouteCard({
           <span className={cn("font-bold font-mono", scoreColor(route.discomfortScore))}>
             {route.discomfortScore}
           </span>
+        </div>
+        <div className="flex items-center justify-between border-t border-slate-700/30 pt-1 mt-1">
+          <span className="text-slate-600 flex items-center gap-1"><BarChart2 size={10} /> composite</span>
+          <span className="font-mono text-slate-400">{composite}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-slate-600 flex items-center gap-1"><Activity size={10} /> reliability</span>
+          <span className={cn("font-mono text-[10px]", reliabilityColor)}>{reliability}/100</span>
         </div>
       </div>
     </motion.button>
@@ -1959,6 +2113,157 @@ function TransitRoutesBrowser({ onClose }: { onClose: () => void }) {
           ))
         )}
       </div>
+    </div>
+  );
+}
+
+// ── Research Metrics Panel ───────────────────────────────────────────────────
+
+function MetricCell({
+  label, value, color, sub, icon,
+}: {
+  label: string; value: string; color: string; sub?: string; icon?: React.ReactNode;
+}) {
+  return (
+    <div className="bg-slate-900/60 border border-slate-700/30 rounded-lg p-2">
+      <div className="flex items-center gap-1 text-slate-600 mb-0.5">
+        {icon}
+        <span className="text-[9px] font-mono uppercase tracking-wider">{label}</span>
+      </div>
+      <span className={cn("text-sm font-bold font-mono", color)}>{value}</span>
+      {sub && <p className="text-[9px] text-slate-600 font-mono mt-0.5">{sub}</p>}
+    </div>
+  );
+}
+
+function ResearchMetricsPanel({
+  fastest, weatherAware, intensity, origin, dest,
+}: {
+  fastest: RouteOption;
+  weatherAware: RouteOption;
+  intensity: RainfallIntensity;
+  origin: Coordinates | null;
+  dest: Coordinates | null;
+}) {
+  const fastMode = fastest.segments[0]?.mode ?? "motorcycle";
+  const safeMode = weatherAware.segments[0]?.mode ?? "mrt";
+
+  const trafficFast = RM_TRAFFIC_DELAY[fastMode]?.[intensity] ?? 1.0;
+  const trafficSafe = RM_TRAFFIC_DELAY[safeMode]?.[intensity] ?? 1.0;
+  const relFast = RM_RELIABILITY[fastMode]?.[intensity] ?? 50;
+  const relSafe = RM_RELIABILITY[safeMode]?.[intensity] ?? 50;
+
+  const fastEtaMin = Math.round(fastest.totalDurationSeconds / 60);
+  const safeEtaMin = Math.round(weatherAware.totalDurationSeconds / 60);
+  const timeSacrifice = fastEtaMin > 0
+    ? Math.round((safeEtaMin - fastEtaMin) / fastEtaMin * 100)
+    : 0;
+
+  const fastComposite = Math.round((0.35 * fastEtaMin + 0.65 * fastest.discomfortScore) * 10) / 10;
+  const safeComposite = Math.round((0.35 * safeEtaMin + 0.65 * weatherAware.discomfortScore) * 10) / 10;
+  const compositeSaving = Math.round((fastComposite - safeComposite) * 10) / 10;
+
+  const floodZone = estimateFloodZone(origin, dest);
+  const floodColor = floodZone === "high" ? "text-red-400" : floodZone === "medium" ? "text-orange-400" : "text-emerald-400";
+  const floodBg   = floodZone === "high"   ? "bg-red-950/30 border-red-700/40"
+                  : floodZone === "medium" ? "bg-orange-950/30 border-orange-700/40"
+                  :                         "bg-emerald-950/20 border-emerald-800/30";
+
+  const trafficColor = (v: number) => v >= 2 ? "text-red-400" : v >= 1.3 ? "text-yellow-400" : "text-emerald-400";
+  const relColor     = (v: number) => v >= 80 ? "text-emerald-400" : v >= 55 ? "text-yellow-400" : "text-red-400";
+  const compColor    = (v: number) => v <= 20 ? "text-emerald-400" : v <= 45 ? "text-yellow-400" : "text-red-400";
+
+  return (
+    <div className="space-y-2.5 pt-1">
+      {/* Flood zone indicator */}
+      <div className={cn("flex items-start gap-2 p-2.5 rounded-lg border text-[11px]", floodBg)}>
+        <Droplets size={11} className={cn(floodColor, "mt-0.5 shrink-0")} />
+        <div className="min-w-0">
+          <span className={cn("font-bold", floodColor)}>Flood zone: {floodZone.toUpperCase()}</span>
+          <span className="text-slate-400 ml-1 text-[10px]">
+            {floodZone === "high"
+              ? "— flood-prone corridor (BPBD DKI). Heavy/extreme rain may block route (+30–100 pts)."
+              : floodZone === "medium"
+              ? "— moderate risk (BPBD DKI). Extreme rain adds +15 discomfort."
+              : "— low flood risk along this corridor."}
+          </span>
+        </div>
+      </div>
+
+      {/* Column headers */}
+      <div className="grid grid-cols-2 gap-2">
+        <p className="text-[9px] font-mono text-orange-400 uppercase tracking-wider px-1">Fastest route</p>
+        <p className="text-[9px] font-mono text-sky-400 uppercase tracking-wider px-1">Weather-Aware</p>
+
+        {/* Traffic delay index */}
+        <MetricCell label="Traffic ×" value={`${trafficFast.toFixed(2)}×`}
+          color={trafficColor(trafficFast)}
+          sub={`V/C ratio · ${fastMode}`}
+          icon={<TrendingUp size={9} />} />
+        <MetricCell label="Traffic ×" value={`${trafficSafe.toFixed(2)}×`}
+          color={trafficColor(trafficSafe)}
+          sub={`V/C ratio · ${safeMode}`}
+          icon={<TrendingUp size={9} />} />
+
+        {/* Mode reliability */}
+        <MetricCell label="Reliability" value={`${relFast}/100`}
+          color={relColor(relFast)}
+          sub={relFast >= 80 ? "high confidence" : relFast >= 55 ? "moderate risk" : "low reliability"}
+          icon={<Activity size={9} />} />
+        <MetricCell label="Reliability" value={`${relSafe}/100`}
+          color={relColor(relSafe)}
+          sub={relSafe >= 80 ? "high confidence" : relSafe >= 55 ? "moderate risk" : "low reliability"}
+          icon={<Activity size={9} />} />
+
+        {/* Composite score */}
+        <MetricCell label="Composite" value={String(fastComposite)}
+          color={compColor(fastComposite)}
+          sub="0.35×ETA + 0.65×discomfort"
+          icon={<BarChart2 size={9} />} />
+        <MetricCell label="Composite" value={String(safeComposite)}
+          color={compColor(safeComposite)}
+          sub="0.35×ETA + 0.65×discomfort"
+          icon={<BarChart2 size={9} />} />
+      </div>
+
+      {/* Time sacrifice ratio — full width */}
+      <div className="bg-slate-900/60 border border-slate-700/40 rounded-lg p-2.5">
+        <div className="flex items-center gap-1.5 mb-2">
+          <Clock size={10} className="text-slate-400" />
+          <span className="text-[9px] font-mono text-slate-500 uppercase tracking-wider">Time Sacrifice Ratio (IEEE)</span>
+        </div>
+        <div className="flex items-center gap-2 mb-1.5">
+          <span className="font-mono font-bold text-white">
+            {timeSacrifice >= 0 ? `+${timeSacrifice}%` : `${timeSacrifice}%`}
+          </span>
+          <span className="text-slate-500 text-[11px]">longer on weather-aware route</span>
+          <span className={cn("ml-auto text-[10px] font-mono font-bold",
+            timeSacrifice <= 15 ? "text-emerald-400" : timeSacrifice <= 40 ? "text-yellow-400" : "text-red-400"
+          )}>
+            {timeSacrifice <= 0 ? "no sacrifice" : timeSacrifice <= 15 ? "acceptable" : timeSacrifice <= 40 ? "moderate" : "high cost"}
+          </span>
+        </div>
+        <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+          <div
+            className={cn("h-full rounded-full transition-all",
+              timeSacrifice <= 15 ? "bg-emerald-500" : timeSacrifice <= 40 ? "bg-yellow-500" : "bg-red-500"
+            )}
+            style={{ width: `${Math.min(Math.max(timeSacrifice, 0), 100)}%` }}
+          />
+        </div>
+        {compositeSaving !== 0 && (
+          <p className="text-[10px] text-slate-500 font-mono mt-1.5">
+            {compositeSaving > 0
+              ? `Switching saves ${compositeSaving} composite pts — weather-aware wins overall.`
+              : `Fastest has lower composite (${Math.abs(compositeSaving)} pts better).`}
+          </p>
+        )}
+      </div>
+
+      {/* Source note */}
+      <p className="text-[10px] text-slate-700 font-mono leading-relaxed">
+        Traffic ×: TomTom Traffic Index 2024 · Reliability: BPBD/operator records 2024–2025 · Flood: BPBD DKI susceptibility map
+      </p>
     </div>
   );
 }
