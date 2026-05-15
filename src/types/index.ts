@@ -4,6 +4,7 @@ export type TransportMode =
   | "transjakarta"
   | "mrt"
   | "lrt"
+  | "krl"
   | "car"
   | "bicycle";
 
@@ -28,11 +29,30 @@ export interface WeatherData {
   visibilityKm?: number;
 }
 
+export interface TransitStop {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+}
+
+export interface TransitLine {
+  routeId: string;
+  shortName: string;
+  longName: string;
+}
+
 export interface RouteSegment {
   mode: TransportMode;
   distanceMeters: number;
   durationSeconds: number;
   geometry: [number, number][];
+  // Transit-specific — present only on transit segments
+  transitLine?: TransitLine;
+  boardStop?: TransitStop;
+  alightStop?: TransitStop;
+  stopCount?: number;
+  instruction?: string;
 }
 
 export interface RouteOption {
@@ -44,6 +64,8 @@ export interface RouteOption {
   discomfortScore: number;
   discomfortBreakdown: DiscomfortBreakdown[];
   recommendation?: string;
+  // Convenience — set when a transit plan was found
+  hasTransitPlan?: boolean;
 }
 
 export interface DiscomfortBreakdown {
@@ -64,6 +86,39 @@ export interface WeatherForecastEntry {
   windSpeedKmh: number;
   humidityPct: number;
   temperatureC: number;
+}
+
+export interface TransitPlanLine {
+  routeId: string;
+  shortName: string;
+  longName: string;
+  type: string;
+}
+
+export interface TransitPlan {
+  id: string;
+  rank: number;
+  // Primary (first) transit mode — used for colour/icon
+  type: string;
+  shortName: string;
+  longName: string;
+  // All lines used (1 = direct, 2 = one transfer)
+  lines: TransitPlanLine[];
+  transfers: number;
+  transferStop?: TransitStop;
+  boardStop: TransitStop;
+  alightStop: TransitStop;
+  stopCount: number;
+  transitDurationSeconds: number;
+  transitDistanceMeters: number;
+  walkToBoard: { distanceMeters: number; durationSeconds: number };
+  walkFromAlight: { distanceMeters: number; durationSeconds: number };
+  totalDurationSeconds: number;
+  totalDistanceMeters: number;
+  shelteredPct: number;
+  rainExposureMinutes: number;
+  modePreference: number;
+  safetyNote: string;
 }
 
 export interface SearchHistory {

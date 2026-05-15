@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import StatusDashboard from "@/components/StatusDashboard";
 
 export const metadata = {
@@ -17,12 +18,22 @@ export default function HomePage() {
               W-MPTRS v0.1
             </span>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Weather-Aware Routing System
-          </h1>
-          <p className="mt-2 text-slate-400 text-sm">
-            Jakarta Multimodal Transit Intelligence · System Readiness Check
-          </p>
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">
+                Weather-Aware Routing System
+              </h1>
+              <p className="mt-2 text-slate-400 text-sm">
+                Jakarta Multimodal Transit Intelligence · API Quotas & System Readiness
+              </p>
+            </div>
+            <Link
+              href="/showcase"
+              className="shrink-0 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 transition-colors text-sm font-medium"
+            >
+              Open App →
+            </Link>
+          </div>
         </header>
 
         <Suspense fallback={<LoadingSkeleton />}>

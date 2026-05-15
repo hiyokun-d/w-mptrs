@@ -37,6 +37,28 @@ model WeatherCache {
   @@map("weather_cache")
 }
 
+model TransitStop {
+  id       String  @id
+  name     String
+  lat      Float
+  lng      Float
+  type     String
+  parentId String?
+
+  @@index([lat, lng])
+  @@map("transit_stops")
+}
+
+model TransitRoute {
+  id        String   @id
+  shortName String
+  longName  String
+  type      String
+  stopIds   String[]
+
+  @@map("transit_routes")
+}
+
 model RouteHistory {
   id               String   @id @default(cuid())
   profileId        String?

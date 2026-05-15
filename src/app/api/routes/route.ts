@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchBothRoutes } from "@/lib/routing/graphhopper";
 import { scoreRoute, buildRecommendationText, suggestModalShift } from "@/lib/routing/discomfort";
-import type { Coordinates, RainfallIntensity, RouteOption } from "@/types";
+import type { Coordinates, RainfallIntensity, RouteOption, TransitPlan } from "@/types";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const routes = await fetchBothRoutes(origin, destination);
+  const routes = await fetchBothRoutes(origin, destination, weatherIntensity);
   if (!routes) {
     return NextResponse.json(
       { error: "All OSRM routing endpoints unavailable. Retry in a few seconds." },
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { fastest: fastestSegs, weatherAware: waSegs } = routes;
+  const { fastest: fastestSegs, weatherAware: waSegs, transitPlans } = routes;
 
   const { totalScore: fs, breakdown: fb } = scoreRoute(fastestSegs, weatherIntensity);
   const { totalScore: ws, breakdown: wb } = scoreRoute(waSegs, weatherIntensity);
@@ -52,10 +52,11 @@ export async function POST(req: NextRequest) {
     discomfortScore: ws,
     discomfortBreakdown: wb,
     recommendation: "",
+    hasTransitPlan: waSegs.some((s) => !!s.transitLine),
   };
   weatherAware.recommendation = buildRecommendationText(weatherAware, weatherIntensity);
 
   const { shouldShift, reason } = suggestModalShift(fastest, weatherAware, weatherIntensity);
 
-  return NextResponse.json({ fastest, weatherAware, shouldShift, shiftReason: reason });
+  return NextResponse.json({ fastest, weatherAware, shouldShift, shiftReason: reason, transitPlans });
 }

@@ -1,6 +1,7 @@
 // OSRM-based routing — free, no API key required.
 // Uses multiple public endpoints with retry for reliability.
-import type { Coordinates, RouteSegment, TransportMode } from "@/types";
+import type { Coordinates, RouteSegment, TransitPlan, TransportMode } from "@/types";
+import { planAllTransitRoutes } from "./transit-planner";
 
 // Public OSRM servers — tried in order on failure
 const OSRM_ENDPOINTS = [
@@ -44,13 +45,22 @@ async function fetchOsrmRoute(
   return null;
 }
 
-export async function fetchBothRoutes(origin: Coordinates, destination: Coordinates) {
-  const [carRoute, footRoute] = await Promise.all([
+export async function fetchBothRoutes(
+  origin: Coordinates,
+  destination: Coordinates,
+  weatherIntensity: import("@/types").RainfallIntensity = "none",
+): Promise<{
+  fastest: RouteSegment[];
+  weatherAware: RouteSegment[];
+  transitPlans: TransitPlan[];
+} | null> {
+  const [carRoute, transitResult, footRoute] = await Promise.all([
     fetchOsrmRoute(origin, destination, "car"),
+    planAllTransitRoutes(origin, destination, weatherIntensity),
     fetchOsrmRoute(origin, destination, "foot"),
   ]);
 
-  if (!carRoute || !footRoute) return null;
+  if (!carRoute) return null;
 
   const fastest: RouteSegment[] = [{
     mode: "motorcycle" as TransportMode,
@@ -59,14 +69,22 @@ export async function fetchBothRoutes(origin: Coordinates, destination: Coordina
     geometry: carRoute.geometry.coordinates,
   }];
 
-  const weatherAware: RouteSegment[] = [{
-    mode: "transjakarta" as TransportMode,
-    distanceMeters: footRoute.distance,
-    durationSeconds: footRoute.duration,
-    geometry: footRoute.geometry.coordinates,
-  }];
+  let weatherAware: RouteSegment[];
+  if (transitResult.primarySegments) {
+    weatherAware = transitResult.primarySegments;
+  } else if (footRoute) {
+    weatherAware = [{
+      mode: "transjakarta" as TransportMode,
+      distanceMeters: footRoute.distance,
+      durationSeconds: footRoute.duration,
+      geometry: footRoute.geometry.coordinates,
+      instruction: "No direct transit found — walking route shown.",
+    }];
+  } else {
+    return null;
+  }
 
-  return { fastest, weatherAware };
+  return { fastest, weatherAware, transitPlans: transitResult.plans };
 }
 
 // kept for backward compat with any direct callers

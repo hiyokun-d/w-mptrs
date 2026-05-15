@@ -12,6 +12,7 @@ const BASE_PENALTY: Record<TransportMode, number> = {
   transjakarta: 2,
   mrt: 2,
   lrt: 3,
+  krl: 2,
   car: 8,
   bicycle: 20,
 };
@@ -24,7 +25,7 @@ const RAINFALL_MULTIPLIER: Record<RainfallIntensity, number> = {
   extreme: 1.4,
 };
 
-const SHELTERED_MODES = new Set<TransportMode>(["transjakarta", "mrt", "lrt"]);
+const SHELTERED_MODES = new Set<TransportMode>(["transjakarta", "mrt", "lrt", "krl"]);
 const OPEN_AIR_MODES = new Set<TransportMode>(["motorcycle", "walking", "bicycle"]);
 
 const MIN_WALKING_DISTANCE_M = 500;
@@ -137,7 +138,7 @@ export function scoreRoute(
 }
 
 export function buildRecommendationText(
-  route: Pick<RouteOption, "label" | "discomfortScore" | "discomfortBreakdown">,
+  route: Pick<RouteOption, "label" | "discomfortScore" | "discomfortBreakdown" | "segments">,
   intensity: RainfallIntensity,
 ): string {
   if (intensity === "none" || intensity === "light") {
@@ -151,12 +152,17 @@ export function buildRecommendationText(
   );
 
   if (route.label === "weather_aware") {
-    const hasSheltered = route.discomfortBreakdown.some((b) =>
-      SHELTERED_MODES.has(b.mode),
-    );
+    const transitSeg = route.segments?.find((s) => s.transitLine);
+    if (transitSeg?.transitLine) {
+      const line = transitSeg.transitLine.shortName;
+      const board = transitSeg.boardStop?.name ?? "";
+      const alight = transitSeg.alightStop?.name ?? "";
+      return `${capitalize(intensity)} rain — take ${line} from ${board} to ${alight}. Sheltered from rain.`;
+    }
+    const hasSheltered = route.discomfortBreakdown.some((b) => SHELTERED_MODES.has(b.mode));
     return hasSheltered
-      ? `${capitalize(intensity)} rain detected. Switching to sheltered transit (TransJakarta/MRT/LRT) is recommended for your safety.`
-      : `${capitalize(intensity)} rain detected. This route minimizes your weather exposure (score: ${route.discomfortScore}).`;
+      ? `${capitalize(intensity)} rain detected. Sheltered transit recommended for your safety.`
+      : `${capitalize(intensity)} rain detected. This route minimizes weather exposure (score: ${route.discomfortScore}).`;
   }
 
   return `Warning: ${worstSegment.reason} Discomfort score: ${route.discomfortScore}.`;
