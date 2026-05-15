@@ -50,11 +50,17 @@ model TransitStop {
 }
 
 model TransitRoute {
-  id        String   @id
-  shortName String
-  longName  String
-  type      String
-  stopIds   String[]
+  id             String   @id
+  shortName      String
+  longName       String
+  type           String
+  stopIds        String[]
+  fareMin        Int      @default(0)
+  fareMax        Int      @default(0)
+  fareNote       String   @default("")
+  operatingHours String   @default("")
+  frequency      Int      @default(15)
+  color          String   @default("#888888")
 
   @@map("transit_routes")
 }

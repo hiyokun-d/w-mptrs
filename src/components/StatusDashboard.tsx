@@ -24,6 +24,9 @@ export interface TransitStat {
   color: string;
   stops: number;
   routes: number;
+  fareRange: string;
+  operatingHours: string;
+  frequency: number;
 }
 
 async function runChecks(): Promise<Record<string, CheckResult>> {
@@ -83,11 +86,16 @@ async function getTransitStats(): Promise<TransitStat[]> {
     const types = ["transjakarta", "mrt", "lrt", "krl"] as const;
     const results = await Promise.all(
       types.map(async (t) => {
-        const [stops, routes] = await Promise.all([
+        const [stops, routes, sample] = await Promise.all([
           db.transitStop.count({ where: { type: t } }),
           db.transitRoute.count({ where: { type: t } }),
+          db.transitRoute.findFirst({
+            where: { type: t, fareMin: { gt: 0 } },
+            select: { fareMin: true, fareMax: true, operatingHours: true, frequency: true },
+            orderBy: { fareMin: "asc" },
+          }),
         ]);
-        return { type: t, stops, routes };
+        return { type: t, stops, routes, sample };
       }),
     );
 
@@ -98,13 +106,26 @@ async function getTransitStats(): Promise<TransitStat[]> {
       krl:          { label: "KRL Commuter", color: "#3b82f6" },
     };
 
-    return results.map((r) => ({
-      type: r.type,
-      label: META[r.type]?.label ?? r.type,
-      color: META[r.type]?.color ?? "#94a3b8",
-      stops: r.stops,
-      routes: r.routes,
-    }));
+    function fmtRp(n: number) { return `Rp ${n.toLocaleString("id-ID")}`; }
+
+    return results.map((r) => {
+      const s = r.sample;
+      const fareRange = s
+        ? s.fareMin === s.fareMax
+          ? fmtRp(s.fareMin)
+          : `${fmtRp(s.fareMin)}–${fmtRp(s.fareMax)}`
+        : "—";
+      return {
+        type: r.type,
+        label: META[r.type]?.label ?? r.type,
+        color: META[r.type]?.color ?? "#94a3b8",
+        stops: r.stops,
+        routes: r.routes,
+        fareRange,
+        operatingHours: s?.operatingHours ?? "",
+        frequency: s?.frequency ?? 0,
+      };
+    });
   } catch {
     return [];
   }

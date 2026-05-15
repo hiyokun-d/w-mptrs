@@ -144,6 +144,12 @@ async function main() {
         longName: "MRT Jakarta North–South Line (Lebak Bulus ↔ Kota)",
         type: "mrt",
         stopIds: MRT_STATIONS.map((s) => s.id),
+        fareMin: 3000,
+        fareMax: 14000,
+        fareNote: "Rp 3.000–Rp 14.000 berbasis jarak — tap KMT/e-money/kartu JakCard",
+        operatingHours: "05:00–24:00",
+        frequency: 5,
+        color: "#0066CC",
       },
     });
     console.log(`  Done — 1 route, ${MRT_STATIONS.length} stops`);
@@ -167,6 +173,12 @@ async function main() {
         longName: "LRT Jakarta (Pegangsaan Dua ↔ Velodrome)",
         type: "lrt",
         stopIds: LRT_JAKARTA_STATIONS.map((s) => s.id),
+        fareMin: 5000,
+        fareMax: 5000,
+        fareNote: "Flat Rp 5.000 — tap kartu non-tunai (e-money/KMT/JakCard)",
+        operatingHours: "05:30–23:00",
+        frequency: 10,
+        color: "#FF6600",
       },
     });
     console.log(`  Done — 1 route, ${LRT_JAKARTA_STATIONS.length} stops`);
@@ -204,6 +216,14 @@ async function main() {
       const bekasi  = ["lrtb_jtm","lrtb_bkb","lrtb_ck2","lrtb_ck1","lrtb_jtb","lrtb_hlm","lrtb_cwg","lrtb_ckk","lrtb_clw","lrtb_dka","lrtb_stb","lrtb_rsd","lrtb_kng","lrtb_pcr"];
       const insertedIds = new Set(jabodebekStops.map((s) => s.id));
 
+      const jabodebakMeta = {
+        fareMin: 5000,
+        fareMax: 5000,
+        fareNote: "Flat Rp 5.000 (subsidi pemerintah) — tap e-money/KMT. Normal tarif jarak: Rp 3.000–Rp 20.000",
+        operatingHours: "05:00–23:30",
+        frequency: 10,
+        color: "#FF6600",
+      };
       await prisma.transitRoute.createMany({
         data: [
           {
@@ -212,6 +232,7 @@ async function main() {
             longName: "LRT Jabodebek — Harjamukti ↔ Dukuh Atas",
             type: "lrt",
             stopIds: cibubur.filter((id) => insertedIds.has(id)),
+            ...jabodebakMeta,
           },
           {
             id: "lrt-jabodebek-bekasi",
@@ -219,6 +240,7 @@ async function main() {
             longName: "LRT Jabodebek — Jatimulya ↔ Dukuh Atas",
             type: "lrt",
             stopIds: bekasi.filter((id) => insertedIds.has(id)),
+            ...jabodebakMeta,
           },
         ],
       });

@@ -124,6 +124,15 @@ const TANJUNG_PRIOK_UNIQUE: Station[] = [
 
 // ── Route sequences (stop ID arrays, direction: terminus A → terminus B) ──────
 
+// KRL fare: Rp 3.000 base (0-25 km) + Rp 1.000 per 10 km thereafter
+// Frequency: 10-20 min peak, 20-30 min off-peak
+// Operating hours: 04:30–23:30 (varies ±30 min by station)
+const KRL_COMMON = {
+  fareNote: "Rp 3.000 (0–25 km) + Rp 1.000 / 10 km berikutnya — tap KMT/e-money",
+  operatingHours: "04:30–23:30",
+  color: "#E91E8C",
+};
+
 const ROUTES = [
   {
     id:        "krl-bogor",
@@ -133,6 +142,8 @@ const ROUTES = [
       ...BOGOR_TO_MRI.map((s) => s.id),
       ...TRUNK_MRI_TO_JKT.map((s) => s.id),
     ],
+    fareMin: 3000, fareMax: 8500, frequency: 10,
+    ...KRL_COMMON,
   },
   {
     id:        "krl-bekasi",
@@ -142,30 +153,40 @@ const ROUTES = [
       ...BEKASI_TO_MRI.map((s) => s.id),
       ...TRUNK_MRI_TO_JKT.map((s) => s.id),
     ],
+    fareMin: 3000, fareMax: 8500, frequency: 10,
+    ...KRL_COMMON,
   },
   {
     id:        "krl-nambo",
     shortName: "KRL Lin Nambo",
     longName:  "KRL Commuter Line Nambo — Citayam ↔ Nambo",
     stopIds:   ["krl_cty", ...NAMBO_BRANCH.map((s) => s.id)],
+    fareMin: 3000, fareMax: 4000, frequency: 30,
+    ...KRL_COMMON,
   },
   {
     id:        "krl-rangkasbitung",
     shortName: "KRL Lin Rangkasbitung",
     longName:  "KRL Commuter Line Rangkasbitung — Rangkasbitung ↔ Tanah Abang",
     stopIds:   RANGKASBITUNG_STOPS.map((s) => s.id),
+    fareMin: 3000, fareMax: 12000, frequency: 20,
+    ...KRL_COMMON,
   },
   {
     id:        "krl-tangerang",
     shortName: "KRL Lin Tangerang",
     longName:  "KRL Commuter Line Tangerang — Tangerang ↔ Duri",
     stopIds:   TANGERANG_STOPS.map((s) => s.id),
+    fareMin: 3000, fareMax: 5000, frequency: 15,
+    ...KRL_COMMON,
   },
   {
     id:        "krl-tanjungpriok",
     shortName: "KRL Lin Tanjung Priok",
     longName:  "KRL Commuter Line Tanjung Priok — Jakarta Kota ↔ Tanjung Priok",
     stopIds:   ["krl_jkt", ...TANJUNG_PRIOK_UNIQUE.map((s) => s.id)],
+    fareMin: 3000, fareMax: 3000, frequency: 30,
+    ...KRL_COMMON,
   },
 ];
 
@@ -208,6 +229,8 @@ async function main() {
       data: ROUTES.map((r) => ({
         id: r.id, shortName: r.shortName, longName: r.longName,
         type: "krl", stopIds: r.stopIds,
+        fareMin: r.fareMin, fareMax: r.fareMax, fareNote: r.fareNote,
+        operatingHours: r.operatingHours, frequency: r.frequency, color: r.color,
       })),
     });
 

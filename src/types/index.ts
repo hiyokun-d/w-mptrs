@@ -98,11 +98,9 @@ export interface TransitPlanLine {
 export interface TransitPlan {
   id: string;
   rank: number;
-  // Primary (first) transit mode — used for colour/icon
   type: string;
   shortName: string;
   longName: string;
-  // All lines used (1 = direct, 2 = one transfer)
   lines: TransitPlanLine[];
   transfers: number;
   transferStop?: TransitStop;
@@ -119,6 +117,12 @@ export interface TransitPlan {
   rainExposureMinutes: number;
   modePreference: number;
   safetyNote: string;
+  // Fare + service info
+  fareEstimateIdr: number;
+  fareNote: string;
+  operatingHours: string;
+  frequency: number;
+  color: string;
 }
 
 export interface SearchHistory {

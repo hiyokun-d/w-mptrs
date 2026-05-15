@@ -12,7 +12,7 @@ import {
   Clock, Route, Gauge, Database, ChevronDown, ChevronUp,
   FlaskConical, History, CheckCircle2, ShieldAlert, Layers,
   Footprints, ArrowDownToLine, ArrowUpFromLine, ChevronsRight,
-  LayoutList, X, Search,
+  LayoutList, X, Search, Banknote, Timer, AlarmClock,
 } from "lucide-react";
 import type { RouteSegment } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -99,6 +99,10 @@ function fmt(m: number) { return m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${
 function fmtTime(s: number) {
   const min = Math.round(s / 60);
   return min >= 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min} min`;
+}
+function fmtRp(idr: number) {
+  if (idr === 0) return "—";
+  return `Rp ${idr.toLocaleString("id-ID")}`;
 }
 function scoreColor(n: number) {
   if (n <= 3)  return "text-emerald-400";
@@ -1359,16 +1363,41 @@ function WalkToStationCard({
         </div>
 
         {/* Total summary */}
-        <div className="mt-1 pt-2 border-t border-white/5 flex items-center gap-3 text-[10px] font-mono">
-          <span className="text-slate-300 font-semibold">{Math.round(plan.totalDurationSeconds / 60)} min total</span>
-          <span className="text-slate-600">·</span>
-          <span className={plan.shelteredPct >= 80 ? "text-emerald-400" : plan.shelteredPct >= 60 ? "text-yellow-400" : "text-orange-400"}>
-            {plan.shelteredPct}% sheltered
-          </span>
-          <span className="text-slate-600">·</span>
-          <span className={plan.rainExposureMinutes <= 3 ? "text-emerald-400" : plan.rainExposureMinutes <= 6 ? "text-yellow-400" : "text-orange-400"}>
-            {plan.rainExposureMinutes <= 0 ? "no rain exp." : `~${plan.rainExposureMinutes} min rain`}
-          </span>
+        <div className="mt-1 pt-2 border-t border-white/5 space-y-1.5">
+          <div className="flex items-center gap-3 text-[10px] font-mono">
+            <span className="text-slate-300 font-semibold">{Math.round(plan.totalDurationSeconds / 60)} min total</span>
+            <span className="text-slate-600">·</span>
+            <span className={plan.shelteredPct >= 80 ? "text-emerald-400" : plan.shelteredPct >= 60 ? "text-yellow-400" : "text-orange-400"}>
+              {plan.shelteredPct}% sheltered
+            </span>
+            <span className="text-slate-600">·</span>
+            <span className={plan.rainExposureMinutes <= 3 ? "text-emerald-400" : plan.rainExposureMinutes <= 6 ? "text-yellow-400" : "text-orange-400"}>
+              {plan.rainExposureMinutes <= 0 ? "no rain exp." : `~${plan.rainExposureMinutes} min rain`}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 text-[10px] font-mono flex-wrap">
+            {plan.fareEstimateIdr > 0 && (
+              <span className="flex items-center gap-1 text-emerald-300 font-semibold">
+                <Banknote size={10} />
+                {fmtRp(plan.fareEstimateIdr)}
+              </span>
+            )}
+            {plan.frequency > 0 && (
+              <span className="flex items-center gap-1 text-slate-400">
+                <Timer size={10} />
+                every ~{plan.frequency} min
+              </span>
+            )}
+            {plan.operatingHours && (
+              <span className="flex items-center gap-1 text-slate-400">
+                <AlarmClock size={10} />
+                {plan.operatingHours}
+              </span>
+            )}
+          </div>
+          {plan.fareNote && (
+            <p className="text-[9px] text-slate-600 font-mono leading-relaxed">{plan.fareNote}</p>
+          )}
         </div>
       </div>
     </div>
@@ -1481,12 +1510,13 @@ function shelterBar(pct: number) {
   );
 }
 
-type TransitSort = "recommended" | "fastest" | "safest";
+type TransitSort = "recommended" | "fastest" | "safest" | "cheapest";
 
 function sortPlans(plans: TransitPlan[], sort: TransitSort): TransitPlan[] {
   const sorted = [...plans];
   if (sort === "fastest")  sorted.sort((a, b) => a.totalDurationSeconds - b.totalDurationSeconds);
   if (sort === "safest")   sorted.sort((a, b) => b.shelteredPct - a.shelteredPct || a.rainExposureMinutes - b.rainExposureMinutes);
+  if (sort === "cheapest") sorted.sort((a, b) => a.fareEstimateIdr - b.fareEstimateIdr || a.totalDurationSeconds - b.totalDurationSeconds);
   // "recommended" keeps server-side rank order
   return sorted.map((p, i) => ({ ...p, rank: i + 1 }));
 }
@@ -1521,19 +1551,21 @@ function TransitSelector({
       </div>
 
       {/* Sort tabs */}
-      <div className="px-3 py-2 border-b border-slate-800/60 flex gap-1.5">
-        {(["recommended", "fastest", "safest"] as TransitSort[]).map((s) => (
+      <div className="px-3 py-2 border-b border-slate-800/60 flex gap-1.5 flex-wrap">
+        {(["recommended", "fastest", "safest", "cheapest"] as TransitSort[]).map((s) => (
           <button
             key={s}
             onClick={() => setSort(s)}
             className={cn(
               "px-2.5 py-1 rounded-lg text-[10px] font-medium border capitalize transition-colors",
               sort === s
-                ? s === "safest" ? "bg-emerald-700/40 border-emerald-600/60 text-emerald-300" : "bg-sky-700/40 border-sky-600/60 text-sky-300"
+                ? s === "safest"   ? "bg-emerald-700/40 border-emerald-600/60 text-emerald-300"
+                : s === "cheapest" ? "bg-teal-700/40 border-teal-600/60 text-teal-300"
+                :                    "bg-sky-700/40 border-sky-600/60 text-sky-300"
                 : "bg-slate-800 border-slate-700 text-slate-500 hover:border-slate-600",
             )}
           >
-            {s === "recommended" ? "⭐ Best" : s === "fastest" ? "⚡ Fastest" : "🛡 Driest"}
+            {s === "recommended" ? "⭐ Best" : s === "fastest" ? "⚡ Fast" : s === "safest" ? "🛡 Driest" : "💰 Cheapest"}
           </button>
         ))}
       </div>
@@ -1607,13 +1639,32 @@ function TransitSelector({
                   <span className="text-red-400/80 truncate max-w-[90px]">{plan.alightStop.name}</span>
                 </div>
 
-                {/* Stats */}
+                {/* Stats row */}
                 <div className="flex items-center gap-3 text-[10px] font-mono text-slate-500">
                   <span className="text-slate-300 font-semibold">{Math.round(plan.totalDurationSeconds / 60)} min</span>
                   <span>{plan.stopCount} stop{plan.stopCount !== 1 ? "s" : ""}</span>
                   <span className={totalWalkM > 500 && isRainy ? "text-orange-400" : ""}>
-                    <Footprints size={9} className="inline mr-0.5" />{Math.round(totalWalkM)}m
+                    <Footprints size={9} className="inline mr-0.5" />{Math.round(totalWalkM)}m walk
                   </span>
+                </div>
+
+                {/* Fare + service row */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {plan.fareEstimateIdr > 0 && (
+                    <span className="flex items-center gap-1 text-[10px] font-mono font-semibold text-emerald-300 bg-emerald-900/30 border border-emerald-700/40 px-1.5 py-0.5 rounded-full">
+                      <Banknote size={9} />{fmtRp(plan.fareEstimateIdr)}
+                    </span>
+                  )}
+                  {plan.frequency > 0 && (
+                    <span className="flex items-center gap-1 text-[9px] font-mono text-slate-400 bg-slate-800 border border-slate-700 px-1.5 py-0.5 rounded-full">
+                      <Timer size={9} />~{plan.frequency} min
+                    </span>
+                  )}
+                  {plan.operatingHours && (
+                    <span className="flex items-center gap-1 text-[9px] font-mono text-slate-400 bg-slate-800 border border-slate-700 px-1.5 py-0.5 rounded-full">
+                      <AlarmClock size={9} />{plan.operatingHours}
+                    </span>
+                  )}
                 </div>
 
                 {/* Rain exposure + shelter bar side by side */}
@@ -1651,6 +1702,12 @@ interface TransitRouteEntry {
   stopCount: number;
   firstStop: string | null;
   lastStop: string | null;
+  fareMin: number;
+  fareMax: number;
+  fareNote: string;
+  operatingHours: string;
+  frequency: number;
+  color: string;
 }
 
 const TYPE_TABS = [
@@ -1835,22 +1892,49 @@ function TransitRoutesBrowser({ onClose }: { onClose: () => void }) {
                     exit={{ height: 0, opacity: 0 }}
                     className="overflow-hidden border-t border-slate-700/40"
                   >
-                    <div className="px-3 py-2 bg-slate-900/40 grid grid-cols-2 gap-2 text-[11px]">
-                      <div>
-                        <p className="text-slate-600 font-mono text-[10px]">stops</p>
-                        <p className="text-white font-semibold">{r.stopCount}</p>
-                      </div>
-                      <div>
-                        <p className="text-slate-600 font-mono text-[10px]">type</p>
-                        <p className={cn("font-semibold capitalize", r.type === "transjakarta" ? "text-amber-300" : r.type === "mrt" ? "text-red-300" : r.type === "lrt" ? "text-emerald-300" : "text-blue-300")}>
-                          {r.type === "transjakarta" ? "TransJakarta BRT" : r.type.toUpperCase()}
-                        </p>
-                      </div>
-                      {r.firstStop && (
-                        <div className="col-span-2">
-                          <p className="text-slate-600 font-mono text-[10px]">terminals</p>
-                          <p className="text-slate-300 truncate">{r.firstStop} ↔ {r.lastStop}</p>
+                    <div className="px-3 py-2 bg-slate-900/40 space-y-2 text-[11px]">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <p className="text-slate-600 font-mono text-[10px]">STOPS</p>
+                          <p className="text-white font-semibold">{r.stopCount}</p>
                         </div>
+                        <div>
+                          <p className="text-slate-600 font-mono text-[10px]">TYPE</p>
+                          <p className={cn("font-semibold capitalize", r.type === "transjakarta" ? "text-amber-300" : r.type === "mrt" ? "text-red-300" : r.type === "lrt" ? "text-emerald-300" : "text-blue-300")}>
+                            {r.type === "transjakarta" ? "TransJakarta BRT" : r.type.toUpperCase()}
+                          </p>
+                        </div>
+                        {r.fareMin > 0 && (
+                          <div>
+                            <p className="text-slate-600 font-mono text-[10px]">FARE</p>
+                            <p className="text-emerald-300 font-semibold font-mono">
+                              {r.fareMin === r.fareMax
+                                ? fmtRp(r.fareMin)
+                                : `${fmtRp(r.fareMin)}–${fmtRp(r.fareMax)}`}
+                            </p>
+                          </div>
+                        )}
+                        {r.frequency > 0 && (
+                          <div>
+                            <p className="text-slate-600 font-mono text-[10px]">FREQUENCY</p>
+                            <p className="text-slate-300 font-semibold">every ~{r.frequency} min</p>
+                          </div>
+                        )}
+                        {r.operatingHours && (
+                          <div className="col-span-2">
+                            <p className="text-slate-600 font-mono text-[10px]">HOURS</p>
+                            <p className="text-slate-300 font-semibold">{r.operatingHours}</p>
+                          </div>
+                        )}
+                        {r.firstStop && (
+                          <div className="col-span-2">
+                            <p className="text-slate-600 font-mono text-[10px]">TERMINALS</p>
+                            <p className="text-slate-300 truncate">{r.firstStop} ↔ {r.lastStop}</p>
+                          </div>
+                        )}
+                      </div>
+                      {r.fareNote && (
+                        <p className="text-[9px] text-slate-600 font-mono leading-relaxed border-t border-slate-800 pt-2">{r.fareNote}</p>
                       )}
                     </div>
                   </motion.div>

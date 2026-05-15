@@ -197,7 +197,7 @@ function TransitStatCard({ stat, index }: { stat: TransitStat; index: number }) 
           </span>
         )}
       </div>
-      <div className="grid grid-cols-2 gap-1">
+      <div className="grid grid-cols-2 gap-1 mb-2">
         <div>
           <p className="text-[10px] text-slate-500">Stops</p>
           <p className="text-base font-bold tabular-nums" style={{ color: stat.color }}>
@@ -211,6 +211,26 @@ function TransitStatCard({ stat, index }: { stat: TransitStat; index: number }) 
           </p>
         </div>
       </div>
+      {stat.fareRange && stat.fareRange !== "—" && (
+        <div className="space-y-1 border-t border-slate-700/30 pt-2">
+          <div className="flex items-center justify-between text-[10px]">
+            <span className="text-slate-500 font-mono">FARE</span>
+            <span className="text-emerald-300 font-semibold font-mono">{stat.fareRange}</span>
+          </div>
+          {stat.operatingHours && (
+            <div className="flex items-center justify-between text-[10px]">
+              <span className="text-slate-500 font-mono">HOURS</span>
+              <span className="text-slate-300 font-mono">{stat.operatingHours}</span>
+            </div>
+          )}
+          {stat.frequency > 0 && (
+            <div className="flex items-center justify-between text-[10px]">
+              <span className="text-slate-500 font-mono">EVERY</span>
+              <span className="text-slate-300 font-mono">~{stat.frequency} min</span>
+            </div>
+          )}
+        </div>
+      )}
     </motion.div>
   );
 }

@@ -20,7 +20,11 @@ export async function GET(req: Request) {
 
   const routes = await db.transitRoute.findMany({
     where,
-    select: { id: true, shortName: true, longName: true, type: true, stopIds: true },
+    select: {
+      id: true, shortName: true, longName: true, type: true, stopIds: true,
+      fareMin: true, fareMax: true, fareNote: true,
+      operatingHours: true, frequency: true, color: true,
+    },
     orderBy: [{ type: "asc" }, { shortName: "asc" }],
   });
 
@@ -46,6 +50,12 @@ export async function GET(req: Request) {
     stopCount: r.stopIds.length,
     firstStop: stopNameMap[r.stopIds[0]] ?? null,
     lastStop:  stopNameMap[r.stopIds[r.stopIds.length - 1]] ?? null,
+    fareMin: r.fareMin,
+    fareMax: r.fareMax,
+    fareNote: r.fareNote,
+    operatingHours: r.operatingHours,
+    frequency: r.frequency,
+    color: r.color,
   }));
 
   return NextResponse.json({ routes: result, total: result.length });

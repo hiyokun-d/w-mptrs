@@ -166,9 +166,16 @@ function buildSafetyNote(type: string, totalWalkM: number, transfers: number): s
 
 // ── Direct candidate type ─────────────────────────────────────────────────────
 
+interface RouteBase {
+  id: string; shortName: string; longName: string; type: string; stopIds: string[];
+  fareMin: number; fareMax: number; fareNote: string;
+  operatingHours: string; frequency: number; color: string;
+}
+
 interface DirectCandidate {
   kind: "direct";
   routeId: string; shortName: string; longName: string; type: string; stopIds: string[];
+  meta: RouteMeta;
   board:  NearbyStop & { idx: number };
   alight: NearbyStop & { idx: number };
   stopCount: number;
@@ -180,8 +187,8 @@ interface DirectCandidate {
 
 interface TransferCandidate {
   kind: "transfer";
-  route1: { id: string; shortName: string; longName: string; type: string; stopIds: string[] };
-  route2: { id: string; shortName: string; longName: string; type: string; stopIds: string[] };
+  route1: RouteBase;
+  route2: RouteBase;
   board:    NearbyStop & { idx: number };
   transfer: { id: string; name: string; lat: number; lng: number; idx1: number; idx2: number };
   alight:   NearbyStop & { idx: number };
@@ -194,6 +201,11 @@ type AnyCandidate = DirectCandidate | TransferCandidate;
 
 // ── Direct route search ───────────────────────────────────────────────────────
 
+const ROUTE_META_SELECT = {
+  id: true, shortName: true, longName: true, type: true, stopIds: true,
+  fareMin: true, fareMax: true, fareNote: true, operatingHours: true, frequency: true, color: true,
+} as const;
+
 async function findDirectCandidates(
   oStops: NearbyStop[],
   dStops: NearbyStop[],
@@ -203,7 +215,7 @@ async function findDirectCandidates(
 
   const routes = await db.transitRoute.findMany({
     where: { AND: [{ stopIds: { hasSome: oIds } }, { stopIds: { hasSome: dIds } }] },
-    select: { id: true, shortName: true, longName: true, type: true, stopIds: true },
+    select: ROUTE_META_SELECT,
   });
 
   const oMap = new Map(oStops.map((s) => [s.id, s]));
@@ -233,6 +245,7 @@ async function findDirectCandidates(
         kind: "direct",
         routeId: route.id, shortName: route.shortName, longName: route.longName,
         type: route.type, stopIds: route.stopIds,
+        meta: { fareMin: route.fareMin, fareMax: route.fareMax, fareNote: route.fareNote, operatingHours: route.operatingHours, frequency: route.frequency, color: route.color },
         board, alight, stopCount, transitDistM, transitSecs,
       });
     }
@@ -254,12 +267,12 @@ async function findTransferCandidates(
   const [origRoutes, destRoutes] = await Promise.all([
     db.transitRoute.findMany({
       where: { stopIds: { hasSome: oIds } },
-      select: { id: true, shortName: true, longName: true, type: true, stopIds: true },
+      select: ROUTE_META_SELECT,
       take: 8,
     }),
     db.transitRoute.findMany({
       where: { stopIds: { hasSome: dIds } },
-      select: { id: true, shortName: true, longName: true, type: true, stopIds: true },
+      select: ROUTE_META_SELECT,
       take: 8,
     }),
   ]);
@@ -398,6 +411,29 @@ function rankCandidates(
   });
 }
 
+// ── Fare estimation ───────────────────────────────────────────────────────────
+
+interface RouteMeta {
+  fareMin: number; fareMax: number; fareNote: string;
+  operatingHours: string; frequency: number; color: string;
+}
+
+function estimateFare(meta: RouteMeta, stopCount: number, distM: number): number {
+  if (meta.fareMin === meta.fareMax) return meta.fareMin; // flat fare
+  // KRL: Rp3.000 base + Rp1.000 per 10km
+  const distKm = distM / 1000;
+  if (distKm > 0) {
+    const krlFare = 3000 + Math.max(0, Math.ceil((distKm - 25) / 10)) * 1000;
+    if (krlFare >= meta.fareMin && krlFare <= meta.fareMax) return krlFare;
+  }
+  // MRT progressive by stop count
+  if (stopCount <= 2)  return Math.max(meta.fareMin, 3000);
+  if (stopCount <= 4)  return Math.max(meta.fareMin, 5000);
+  if (stopCount <= 6)  return Math.max(meta.fareMin, 8500);
+  if (stopCount <= 8)  return Math.max(meta.fareMin, 11000);
+  return meta.fareMax;
+}
+
 // ── Build TransitPlan metadata ────────────────────────────────────────────────
 
 function buildPlanMeta(
@@ -405,6 +441,7 @@ function buildPlanMeta(
   rank: number,
   walkToBoard: { distanceMeters: number; durationSeconds: number },
   walkFromAlight: { distanceMeters: number; durationSeconds: number },
+  routeMeta: Map<string, RouteMeta>,
 ): TransitPlan {
   const totalWalkM    = walkToBoard.distanceMeters + walkFromAlight.distanceMeters;
   const transitTotal  = transitSecs(c);
@@ -425,6 +462,36 @@ function buildPlanMeta(
   const transfers   = c.kind === "transfer" ? 1 : 0;
   const shortName   = c.kind === "direct" ? c.shortName : `${c.route1.shortName} → ${c.route2.shortName}`;
   const longName    = c.kind === "direct" ? c.longName  : `${c.route1.longName} → ${c.route2.longName}`;
+  const stopCount   = c.kind === "direct" ? c.stopCount : c.stopCount1 + c.stopCount2;
+  const transitDistM = c.kind === "direct" ? c.transitDistM : c.transit1DistM + c.transit2DistM;
+
+  // Fare: sum all legs
+  let fareEstimateIdr = 0;
+  let fareNote = "";
+  let operatingHours = "";
+  let frequency = 15;
+  let color = "#888888";
+
+  if (c.kind === "direct") {
+    const m = routeMeta.get(c.routeId);
+    if (m) {
+      fareEstimateIdr = estimateFare(m, c.stopCount, c.transitDistM);
+      fareNote = m.fareNote || `Rp ${fareEstimateIdr.toLocaleString("id-ID")}`;
+      operatingHours = m.operatingHours;
+      frequency = m.frequency;
+      color = m.color;
+    }
+  } else {
+    const m1 = routeMeta.get(c.route1.id);
+    const m2 = routeMeta.get(c.route2.id);
+    if (m1) fareEstimateIdr += estimateFare(m1, c.stopCount1, c.transit1DistM);
+    if (m2) fareEstimateIdr += estimateFare(m2, c.stopCount2, c.transit2DistM);
+    const notes = [m1?.fareNote, m2?.fareNote].filter(Boolean).join(" + ");
+    fareNote = notes || `Rp ${fareEstimateIdr.toLocaleString("id-ID")}`;
+    operatingHours = m1?.operatingHours ?? m2?.operatingHours ?? "";
+    frequency = Math.max(m1?.frequency ?? 15, m2?.frequency ?? 15);
+    color = m1?.color ?? m2?.color ?? "#888888";
+  }
 
   return {
     id:   candidateKey(c),
@@ -439,9 +506,9 @@ function buildPlanMeta(
       : undefined,
     boardStop:  { id: c.board.id,  name: c.board.name,  lat: c.board.lat,  lng: c.board.lng },
     alightStop: { id: c.alight.id, name: c.alight.name, lat: c.alight.lat, lng: c.alight.lng },
-    stopCount:   c.kind === "direct" ? c.stopCount : c.stopCount1 + c.stopCount2,
+    stopCount,
     transitDurationSeconds: Math.round(transitTotal),
-    transitDistanceMeters:  Math.round(c.kind === "direct" ? c.transitDistM : c.transit1DistM + c.transit2DistM),
+    transitDistanceMeters:  Math.round(transitDistM),
     walkToBoard:   { distanceMeters: Math.round(walkToBoard.distanceMeters),   durationSeconds: Math.round(walkToBoard.durationSeconds) },
     walkFromAlight:{ distanceMeters: Math.round(walkFromAlight.distanceMeters),durationSeconds: Math.round(walkFromAlight.durationSeconds) },
     totalDurationSeconds: Math.round(totalDuration),
@@ -450,6 +517,11 @@ function buildPlanMeta(
     rainExposureMinutes: rainExpMin,
     modePreference: MODE_PREFERENCE[type] ?? 9,
     safetyNote: buildSafetyNote(type, totalWalkM, transfers),
+    fareEstimateIdr,
+    fareNote,
+    operatingHours,
+    frequency,
+    color,
   };
 }
 
@@ -479,7 +551,9 @@ async function buildDirectSegments(
   const geo = await fetchTransitGeometry(c.stopIds, c.board.idx, c.alight.idx);
   const segs: RouteSegment[] = [];
 
-  if (w1.distanceMeters > 30) segs.push({ mode: "walking", distanceMeters: w1.distanceMeters, durationSeconds: w1.durationSeconds, geometry: w1.geometry, instruction: `Walk to ${c.board.name}` });
+  const walkMin1 = Math.round(w1.durationSeconds / 60);
+  const walkMin2 = Math.round(w2.durationSeconds / 60);
+  if (w1.distanceMeters > 30) segs.push({ mode: "walking", distanceMeters: w1.distanceMeters, durationSeconds: w1.durationSeconds, geometry: w1.geometry, instruction: `Walk ${Math.round(w1.distanceMeters)}m (~${walkMin1} min) to ${c.board.name}` });
 
   segs.push({
     mode: c.type as TransportMode,
@@ -490,10 +564,10 @@ async function buildDirectSegments(
     boardStop:  { id: c.board.id,  name: c.board.name,  lat: c.board.lat,  lng: c.board.lng },
     alightStop: { id: c.alight.id, name: c.alight.name, lat: c.alight.lat, lng: c.alight.lng },
     stopCount: c.stopCount,
-    instruction: `${c.shortName} · ${c.stopCount} stop${c.stopCount > 1 ? "s" : ""}`,
+    instruction: `${c.shortName} · ${c.stopCount} stop${c.stopCount > 1 ? "s" : ""} · alight at ${c.alight.name}`,
   });
 
-  if (w2.distanceMeters > 30) segs.push({ mode: "walking", distanceMeters: w2.distanceMeters, durationSeconds: w2.durationSeconds, geometry: w2.geometry, instruction: "Walk to destination" });
+  if (w2.distanceMeters > 30) segs.push({ mode: "walking", distanceMeters: w2.distanceMeters, durationSeconds: w2.durationSeconds, geometry: w2.geometry, instruction: `Walk ${Math.round(w2.distanceMeters)}m (~${walkMin2} min) to destination` });
 
   return segs;
 }
@@ -511,7 +585,9 @@ async function buildTransferSegments(
 
   const segs: RouteSegment[] = [];
 
-  if (w1.distanceMeters > 30) segs.push({ mode: "walking", distanceMeters: w1.distanceMeters, durationSeconds: w1.durationSeconds, geometry: w1.geometry, instruction: `Walk to ${c.board.name}` });
+  const walkMin1 = Math.round(w1.durationSeconds / 60);
+  const walkMin2 = Math.round(w2.durationSeconds / 60);
+  if (w1.distanceMeters > 30) segs.push({ mode: "walking", distanceMeters: w1.distanceMeters, durationSeconds: w1.durationSeconds, geometry: w1.geometry, instruction: `Walk ${Math.round(w1.distanceMeters)}m (~${walkMin1} min) to ${c.board.name}` });
 
   segs.push({
     mode: c.route1.type as TransportMode,
@@ -522,16 +598,15 @@ async function buildTransferSegments(
     boardStop:  { id: c.board.id,    name: c.board.name,    lat: c.board.lat,    lng: c.board.lng },
     alightStop: { id: c.transfer.id, name: c.transfer.name, lat: c.transfer.lat, lng: c.transfer.lng },
     stopCount: c.stopCount1,
-    instruction: `${c.route1.shortName} · ${c.stopCount1} stop${c.stopCount1 > 1 ? "s" : ""}`,
+    instruction: `${c.route1.shortName} · ${c.stopCount1} stop${c.stopCount1 > 1 ? "s" : ""} · alight at ${c.transfer.name}`,
   });
 
-  // Transfer walk (same stop = 0m, show as a brief note)
   segs.push({
     mode: "walking",
     distanceMeters: 0,
-    durationSeconds: 120, // 2-min platform transfer time
+    durationSeconds: 120,
     geometry: [[c.transfer.lng, c.transfer.lat], [c.transfer.lng, c.transfer.lat]],
-    instruction: `Transfer at ${c.transfer.name}`,
+    instruction: `Transfer at ${c.transfer.name} (~2 min platform change)`,
   });
 
   segs.push({
@@ -543,10 +618,10 @@ async function buildTransferSegments(
     boardStop:  { id: c.transfer.id, name: c.transfer.name, lat: c.transfer.lat, lng: c.transfer.lng },
     alightStop: { id: c.alight.id,   name: c.alight.name,   lat: c.alight.lat,   lng: c.alight.lng },
     stopCount: c.stopCount2,
-    instruction: `${c.route2.shortName} · ${c.stopCount2} stop${c.stopCount2 > 1 ? "s" : ""}`,
+    instruction: `${c.route2.shortName} · ${c.stopCount2} stop${c.stopCount2 > 1 ? "s" : ""} · alight at ${c.alight.name}`,
   });
 
-  if (w2.distanceMeters > 30) segs.push({ mode: "walking", distanceMeters: w2.distanceMeters, durationSeconds: w2.durationSeconds, geometry: w2.geometry, instruction: "Walk to destination" });
+  if (w2.distanceMeters > 30) segs.push({ mode: "walking", distanceMeters: w2.distanceMeters, durationSeconds: w2.durationSeconds, geometry: w2.geometry, instruction: `Walk ${Math.round(w2.distanceMeters)}m (~${walkMin2} min) to destination` });
 
   return segs;
 }
@@ -584,16 +659,27 @@ export async function planAllTransitRoutes(
 
   const ranked = rankCandidates(allCandidates, intensity, origin, dest).slice(0, MAX_PLANS);
 
-  // Walk geometry: OSRM for rank-1, haversine for rest (all parallel)
+  // Build route meta map for fare/timing lookup
+  const routeMeta = new Map<string, RouteMeta>();
+  for (const c of ranked) {
+    if (c.kind === "direct") {
+      routeMeta.set(c.routeId, c.meta);
+    } else {
+      routeMeta.set(c.route1.id, { fareMin: c.route1.fareMin, fareMax: c.route1.fareMax, fareNote: c.route1.fareNote, operatingHours: c.route1.operatingHours, frequency: c.route1.frequency, color: c.route1.color });
+      routeMeta.set(c.route2.id, { fareMin: c.route2.fareMin, fareMax: c.route2.fareMax, fareNote: c.route2.fareNote, operatingHours: c.route2.operatingHours, frequency: c.route2.frequency, color: c.route2.color });
+    }
+  }
+
+  // Walk geometry: OSRM for top-3 plans, haversine for rest (all parallel)
   const walkPromises = ranked.map((c, i) => {
     const boardCoord  = { lat: c.board.lat,  lng: c.board.lng };
     const alightCoord = { lat: c.alight.lat, lng: c.alight.lng };
-    if (i === 0) return Promise.all([osrmWalk(origin, boardCoord), osrmWalk(alightCoord, dest)]);
+    if (i < 3) return Promise.all([osrmWalk(origin, boardCoord), osrmWalk(alightCoord, dest)]);
     return Promise.resolve([haversineFallback(origin, boardCoord), haversineFallback(alightCoord, dest)] as const);
   });
   const walks = await Promise.all(walkPromises);
 
-  const plans = ranked.map((c, i) => buildPlanMeta(c, i + 1, walks[i][0], walks[i][1]));
+  const plans = ranked.map((c, i) => buildPlanMeta(c, i + 1, walks[i][0], walks[i][1], routeMeta));
 
   // Full segments with transit geometry for rank-1
   const [w1, w2] = walks[0];
@@ -619,7 +705,7 @@ export async function buildPlanSegments(
 ): Promise<RouteSegment[] | null> {
   const route = await db.transitRoute.findUnique({
     where: { id: routeId },
-    select: { id: true, shortName: true, longName: true, type: true, stopIds: true },
+    select: ROUTE_META_SELECT,
   });
   if (!route) return null;
 
@@ -643,6 +729,7 @@ export async function buildPlanSegments(
     kind: "direct",
     routeId: route.id, shortName: route.shortName, longName: route.longName,
     type: route.type, stopIds: route.stopIds,
+    meta: { fareMin: route.fareMin, fareMax: route.fareMax, fareNote: route.fareNote, operatingHours: route.operatingHours, frequency: route.frequency, color: route.color },
     board:  { ...boardStop,  distM, idx: bIdx, type: route.type },
     alight: { ...alightStop, distM: haversine(dest.lat, dest.lng, alightStop.lat, alightStop.lng), idx: aIdx, type: route.type },
     stopCount, transitDistM, transitSecs,

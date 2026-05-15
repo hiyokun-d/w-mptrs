@@ -10,7 +10,8 @@
     "format": "biome format --write",
     "import-gtfs": "bun scripts/import-gtfs.ts",
     "import-krl": "bun scripts/import-krl.ts",
-    "import-mrt-lrt": "bun scripts/import-mrt-lrt.ts"
+    "import-mrt-lrt": "bun scripts/import-mrt-lrt.ts",
+    "patch-fares": "bun scripts/patch-fares.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
