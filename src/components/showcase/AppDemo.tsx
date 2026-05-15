@@ -27,6 +27,8 @@ import type {
 } from "@/types";
 
 // ── dynamic import — Leaflet can't SSR ──────────────────────────────────────
+import ShowcaseResearchView from "./ShowcaseResearchView";
+
 const AppMap = dynamic(() => import("./AppMap"), {
   ssr: false,
   loading: () => (
@@ -121,6 +123,7 @@ export default function AppDemo() {
     setSimulation, setLoading, setError, isLoading, error, reset,
   } = store;
 
+  const [viewMode, setViewMode]             = useState<"app" | "research">("app");
   const [showBreakdown, setShowBreakdown]   = useState(false);
   const [showStorePanel, setShowStorePanel] = useState(false);
   const [history, setHistory]               = useState<HistoryEntry[]>([]);
@@ -332,7 +335,12 @@ export default function AppDemo() {
           <div className="flex items-center gap-2 mb-1">
             <div className="w-1.5 h-6 bg-blue-500 rounded-full" />
             <span className="text-[10px] font-mono text-blue-400 tracking-widest uppercase">W-MPTRS</span>
-            <span className="ml-auto text-[10px] font-mono text-slate-600">Jakarta · Indonesia</span>
+            <button
+              onClick={() => setViewMode("research")}
+              className="ml-auto text-[10px] px-2.5 py-1 rounded-full bg-blue-900/40 border border-blue-700/40 text-blue-400 hover:bg-blue-900/70 transition-colors font-medium"
+            >
+              Research Data →
+            </button>
           </div>
           <h1 className="text-base font-bold">Smart Route Finder</h1>
           <p className="text-xs text-slate-500 mt-0.5">Weather-aware multimodal navigation</p>
@@ -847,6 +855,13 @@ export default function AppDemo() {
           nearbyOriginStops={routes.length === 0 ? nearbyStops : []}
         />
       </div>
+
+      {/* ── RESEARCH OVERLAY ─────────────────────────────────────────────── */}
+      {viewMode === "research" && (
+        <div className="absolute inset-0 z-50 bg-[#060810] flex flex-col">
+          <ShowcaseResearchView onClose={() => setViewMode("app")} />
+        </div>
+      )}
     </div>
   );
 }
