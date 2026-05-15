@@ -80,6 +80,18 @@ model RouteHistory {
   discomfortScore  Float
   routeLabel       String
 
+  // IEEE-standard research parameters (added 2026-05-15)
+  trafficDelayIndex     Float?
+  floodRiskZone         String?
+  floodPenalty          Float?
+  shelterCoveragePct    Int?
+  walkingUnsheltered    Int?
+  modeReliabilityIndex  Int?
+  timeSacrificeRatio    Float?
+  totalEtaMin           Int?
+  totalCostIdr          Int?
+  compositeScore        Float?
+
   createdAt        DateTime @default(now())
 
   @@index([profileId])
