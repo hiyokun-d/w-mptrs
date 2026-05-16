@@ -62,11 +62,21 @@ export async function fetchBothRoutes(
 
   if (!carRoute) return null;
 
+  // Compute initial heading from route geometry for orientation
+  const geo = carRoute.geometry.coordinates;
+  const [lng1, lat1] = geo[0];
+  const [lng2, lat2] = geo[Math.min(3, geo.length - 1)];
+  const dLat = lat2 - lat1, dLng = lng2 - lng1;
+  const bearing = Math.atan2(dLng, dLat) * 180 / Math.PI;
+  const dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+  const dir = dirs[Math.round(((bearing + 360) % 360) / 45) % 8];
+
   const fastest: RouteSegment[] = [{
     mode: "motorcycle" as TransportMode,
     distanceMeters: carRoute.distance,
     durationSeconds: carRoute.duration,
     geometry: carRoute.geometry.coordinates,
+    instruction: `Head ${dir} — motorcycle, ${(carRoute.distance / 1000).toFixed(1)} km (~${Math.round(carRoute.duration / 60)} min)`,
   }];
 
   let weatherAware: RouteSegment[];

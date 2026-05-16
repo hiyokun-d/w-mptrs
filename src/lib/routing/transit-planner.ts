@@ -14,24 +14,31 @@ const TRANSIT_SPEED_MS: Record<string, number> = {
 };
 const DWELL_PER_STOP_S = 45;
 const WALK_SPEED_MS    = 1.2;
+// Jakarta transit routes are ~30% longer than straight-line (winding streets/elevated paths)
+const TRANSIT_ROUTE_FACTOR = 1.3;
 const MAX_NEARBY_STOPS = 15;
 const MAX_STOP_SAMPLES = 50;
 const MAX_DIRECT_PLANS = 4;
 const MAX_TRANSFER_PLANS = 3;
 const MAX_PLANS        = 6;
 
-// Adaptive radius tiers per weather intensity (origin + dest)
+// Hard cap: nearest halte must be reachable within 12 min on foot (864m at 1.2 m/s)
+// Radius tiers expand until 2+ stops found, but never exceed the 12-min walk max
 const RADIUS_TIERS: Record<RainfallIntensity, number[]> = {
-  none:     [1000, 1500],
-  light:    [1000, 1500],
-  moderate: [800,  1200, 1500],
-  heavy:    [600,  900,  1200],
-  extreme:  [500,  800,  1000],
+  none:     [500, 750, 900],   // max ~12.5 min
+  light:    [500, 750, 900],   // same — light rain still walkable
+  moderate: [400, 600, 750],   // ~10 min max
+  heavy:    [300, 450, 600],   // ~8 min max
+  extreme:  [200, 350, 450],   // ~6 min max — shelter ASAP
 };
 
 // Max acceptable walk distance per intensity (meters). Beyond this, candidate skipped.
 const MAX_WALK_M: Record<RainfallIntensity, number> = {
-  none: 1500, light: 1200, moderate: 900, heavy: 600, extreme: 400,
+  none:     864,  // 12 min × 60s × 1.2 m/s
+  light:    720,  // 10 min
+  moderate: 576,  // 8 min
+  heavy:    360,  // 5 min
+  extreme:  240,  // ~3.5 min
 };
 
 // Lower = more preferred (rail > BRT)
@@ -51,6 +58,15 @@ const OSRM_FOOT = [
 ];
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
+
+// 8-point compass bearing from point A → B
+function compassBearing(lat1: number, lng1: number, lat2: number, lng2: number): string {
+  const dLat = lat2 - lat1;
+  const dLng = lng2 - lng1;
+  const angle = Math.atan2(dLng, dLat) * 180 / Math.PI;
+  const dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+  return dirs[Math.round(((angle + 360) % 360) / 45) % 8];
+}
 
 function haversine(lat1: number, lng1: number, lat2: number, lng2: number) {
   const R = 6_371_000;
@@ -223,21 +239,26 @@ async function findDirectCandidates(
   const candidates: DirectCandidate[] = [];
 
   for (const route of routes) {
+    // Sort by walk distance so we always board at the nearest halte
     const boardCands = route.stopIds
       .map((id, idx) => oMap.has(id) ? { ...oMap.get(id)!, idx } : null)
-      .filter((x): x is NonNullable<typeof x> => x !== null);
+      .filter((x): x is NonNullable<typeof x> => x !== null)
+      .sort((a, b) => a.distM - b.distM);
 
     for (const board of boardCands.slice(0, 3)) {
+      // Sort alight candidates by proximity to destination as tiebreaker
       const alightCands = route.stopIds
         .map((id, idx) => dMap.has(id) ? { ...dMap.get(id)!, idx } : null)
-        .filter((x): x is NonNullable<typeof x> => x !== null && x.idx > board.idx);
+        .filter((x): x is NonNullable<typeof x> => x !== null && x.idx > board.idx)
+        .sort((a, b) => a.distM - b.distM);
       if (!alightCands.length) continue;
 
       const alight = alightCands[0];
       const stopCount = alight.idx - board.idx;
       if (stopCount < 1) continue;
 
-      const transitDistM = haversine(board.lat, board.lng, alight.lat, alight.lng);
+      // Apply route factor: Jakarta bus/rail paths are ~30% longer than crow-flies
+      const transitDistM = haversine(board.lat, board.lng, alight.lat, alight.lng) * TRANSIT_ROUTE_FACTOR;
       const speed = TRANSIT_SPEED_MS[route.type] ?? TRANSIT_SPEED_MS.transjakarta;
       const transitSecs = transitDistM / speed + stopCount * DWELL_PER_STOP_S;
 
@@ -338,8 +359,8 @@ async function findTransferCandidates(
       const speed1 = TRANSIT_SPEED_MS[r1.type] ?? TRANSIT_SPEED_MS.transjakarta;
       const speed2 = TRANSIT_SPEED_MS[r2.type] ?? TRANSIT_SPEED_MS.transjakarta;
 
-      const transit1DistM = haversine(board.lat, board.lng, tStop.lat, tStop.lng);
-      const transit2DistM = haversine(tStop.lat, tStop.lng, alight.lat, alight.lng);
+      const transit1DistM = haversine(board.lat, board.lng, tStop.lat, tStop.lng) * TRANSIT_ROUTE_FACTOR;
+      const transit2DistM = haversine(tStop.lat, tStop.lng, alight.lat, alight.lng) * TRANSIT_ROUTE_FACTOR;
       const transit1Secs  = transit1DistM / speed1 + stopCount1 * DWELL_PER_STOP_S;
       const transit2Secs  = transit2DistM / speed2 + stopCount2 * DWELL_PER_STOP_S;
 
@@ -553,8 +574,18 @@ async function buildDirectSegments(
 
   const walkMin1 = Math.round(w1.durationSeconds / 60);
   const walkMin2 = Math.round(w2.durationSeconds / 60);
-  if (w1.distanceMeters > 30) segs.push({ mode: "walking", distanceMeters: w1.distanceMeters, durationSeconds: w1.durationSeconds, geometry: w1.geometry, instruction: `Walk ${Math.round(w1.distanceMeters)}m (~${walkMin1} min) to ${c.board.name}` });
+  if (w1.distanceMeters > 30) {
+    const dir = compassBearing(origin.lat, origin.lng, c.board.lat, c.board.lng);
+    segs.push({
+      mode: "walking",
+      distanceMeters: w1.distanceMeters,
+      durationSeconds: w1.durationSeconds,
+      geometry: w1.geometry,
+      instruction: `Head ${dir} — walk ${Math.round(w1.distanceMeters)}m (~${walkMin1} min) to ${c.board.name}`,
+    });
+  }
 
+  const transitDir = compassBearing(c.board.lat, c.board.lng, c.alight.lat, c.alight.lng);
   segs.push({
     mode: c.type as TransportMode,
     distanceMeters: c.transitDistM,
@@ -564,10 +595,19 @@ async function buildDirectSegments(
     boardStop:  { id: c.board.id,  name: c.board.name,  lat: c.board.lat,  lng: c.board.lng },
     alightStop: { id: c.alight.id, name: c.alight.name, lat: c.alight.lat, lng: c.alight.lng },
     stopCount: c.stopCount,
-    instruction: `${c.shortName} · ${c.stopCount} stop${c.stopCount > 1 ? "s" : ""} · alight at ${c.alight.name}`,
+    instruction: `Board ${c.shortName} heading ${transitDir} — ride ${c.stopCount} stop${c.stopCount > 1 ? "s" : ""}, alight at ${c.alight.name}`,
   });
 
-  if (w2.distanceMeters > 30) segs.push({ mode: "walking", distanceMeters: w2.distanceMeters, durationSeconds: w2.durationSeconds, geometry: w2.geometry, instruction: `Walk ${Math.round(w2.distanceMeters)}m (~${walkMin2} min) to destination` });
+  if (w2.distanceMeters > 30) {
+    const dir = compassBearing(c.alight.lat, c.alight.lng, dest.lat, dest.lng);
+    segs.push({
+      mode: "walking",
+      distanceMeters: w2.distanceMeters,
+      durationSeconds: w2.durationSeconds,
+      geometry: w2.geometry,
+      instruction: `Head ${dir} — walk ${Math.round(w2.distanceMeters)}m (~${walkMin2} min) to your destination`,
+    });
+  }
 
   return segs;
 }
@@ -587,8 +627,18 @@ async function buildTransferSegments(
 
   const walkMin1 = Math.round(w1.durationSeconds / 60);
   const walkMin2 = Math.round(w2.durationSeconds / 60);
-  if (w1.distanceMeters > 30) segs.push({ mode: "walking", distanceMeters: w1.distanceMeters, durationSeconds: w1.durationSeconds, geometry: w1.geometry, instruction: `Walk ${Math.round(w1.distanceMeters)}m (~${walkMin1} min) to ${c.board.name}` });
+  if (w1.distanceMeters > 30) {
+    const dir = compassBearing(origin.lat, origin.lng, c.board.lat, c.board.lng);
+    segs.push({
+      mode: "walking",
+      distanceMeters: w1.distanceMeters,
+      durationSeconds: w1.durationSeconds,
+      geometry: w1.geometry,
+      instruction: `Head ${dir} — walk ${Math.round(w1.distanceMeters)}m (~${walkMin1} min) to ${c.board.name}`,
+    });
+  }
 
+  const leg1Dir = compassBearing(c.board.lat, c.board.lng, c.transfer.lat, c.transfer.lng);
   segs.push({
     mode: c.route1.type as TransportMode,
     distanceMeters: c.transit1DistM,
@@ -598,7 +648,7 @@ async function buildTransferSegments(
     boardStop:  { id: c.board.id,    name: c.board.name,    lat: c.board.lat,    lng: c.board.lng },
     alightStop: { id: c.transfer.id, name: c.transfer.name, lat: c.transfer.lat, lng: c.transfer.lng },
     stopCount: c.stopCount1,
-    instruction: `${c.route1.shortName} · ${c.stopCount1} stop${c.stopCount1 > 1 ? "s" : ""} · alight at ${c.transfer.name}`,
+    instruction: `Board ${c.route1.shortName} heading ${leg1Dir} — ride ${c.stopCount1} stop${c.stopCount1 > 1 ? "s" : ""}, alight at ${c.transfer.name}`,
   });
 
   segs.push({
@@ -606,9 +656,10 @@ async function buildTransferSegments(
     distanceMeters: 0,
     durationSeconds: 120,
     geometry: [[c.transfer.lng, c.transfer.lat], [c.transfer.lng, c.transfer.lat]],
-    instruction: `Transfer at ${c.transfer.name} (~2 min platform change)`,
+    instruction: `Transfer at ${c.transfer.name} — change platform (~2 min)`,
   });
 
+  const leg2Dir = compassBearing(c.transfer.lat, c.transfer.lng, c.alight.lat, c.alight.lng);
   segs.push({
     mode: c.route2.type as TransportMode,
     distanceMeters: c.transit2DistM,
@@ -618,10 +669,19 @@ async function buildTransferSegments(
     boardStop:  { id: c.transfer.id, name: c.transfer.name, lat: c.transfer.lat, lng: c.transfer.lng },
     alightStop: { id: c.alight.id,   name: c.alight.name,   lat: c.alight.lat,   lng: c.alight.lng },
     stopCount: c.stopCount2,
-    instruction: `${c.route2.shortName} · ${c.stopCount2} stop${c.stopCount2 > 1 ? "s" : ""} · alight at ${c.alight.name}`,
+    instruction: `Board ${c.route2.shortName} heading ${leg2Dir} — ride ${c.stopCount2} stop${c.stopCount2 > 1 ? "s" : ""}, alight at ${c.alight.name}`,
   });
 
-  if (w2.distanceMeters > 30) segs.push({ mode: "walking", distanceMeters: w2.distanceMeters, durationSeconds: w2.durationSeconds, geometry: w2.geometry, instruction: `Walk ${Math.round(w2.distanceMeters)}m (~${walkMin2} min) to destination` });
+  if (w2.distanceMeters > 30) {
+    const dir = compassBearing(c.alight.lat, c.alight.lng, dest.lat, dest.lng);
+    segs.push({
+      mode: "walking",
+      distanceMeters: w2.distanceMeters,
+      durationSeconds: w2.durationSeconds,
+      geometry: w2.geometry,
+      instruction: `Head ${dir} — walk ${Math.round(w2.distanceMeters)}m (~${walkMin2} min) to your destination`,
+    });
+  }
 
   return segs;
 }
@@ -721,7 +781,7 @@ export async function buildPlanSegments(
 
   const stopCount = aIdx - bIdx;
   const speed = TRANSIT_SPEED_MS[route.type] ?? TRANSIT_SPEED_MS.transjakarta;
-  const transitDistM = haversine(boardStop.lat, boardStop.lng, alightStop.lat, alightStop.lng);
+  const transitDistM = haversine(boardStop.lat, boardStop.lng, alightStop.lat, alightStop.lng) * TRANSIT_ROUTE_FACTOR;
   const transitSecs  = transitDistM / speed + stopCount * DWELL_PER_STOP_S;
 
   const distM = haversine(origin.lat, origin.lng, boardStop.lat, boardStop.lng);
