@@ -1,3 +1,7 @@
+> **Reviewers:** an interactive terminal simulator of the Discomfort Penalty
+> routing model lives in [`wmptrs-sim/`](wmptrs-sim/README.md). Run
+> `./wmptrs-sim/run.sh` (no install needed on macOS, Linux or Windows).
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
