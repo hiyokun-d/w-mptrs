@@ -1,6 +1,11 @@
 // OSRM-based routing — free, no API key required.
 // Uses multiple public endpoints with retry for reliability.
-import type { Coordinates, RouteSegment, TransitPlan, TransportMode } from "@/types";
+import type {
+  Coordinates,
+  RouteSegment,
+  TransitPlan,
+  TransportMode,
+} from "@/types";
 import { planAllTransitRoutes } from "./transit-planner";
 
 // Public OSRM servers — tried in order on failure
@@ -66,30 +71,35 @@ export async function fetchBothRoutes(
   const geo = carRoute.geometry.coordinates;
   const [lng1, lat1] = geo[0];
   const [lng2, lat2] = geo[Math.min(3, geo.length - 1)];
-  const dLat = lat2 - lat1, dLng = lng2 - lng1;
-  const bearing = Math.atan2(dLng, dLat) * 180 / Math.PI;
+  const dLat = lat2 - lat1,
+    dLng = lng2 - lng1;
+  const bearing = (Math.atan2(dLng, dLat) * 180) / Math.PI;
   const dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
   const dir = dirs[Math.round(((bearing + 360) % 360) / 45) % 8];
 
-  const fastest: RouteSegment[] = [{
-    mode: "motorcycle" as TransportMode,
-    distanceMeters: carRoute.distance,
-    durationSeconds: carRoute.duration,
-    geometry: carRoute.geometry.coordinates,
-    instruction: `Head ${dir} — motorcycle, ${(carRoute.distance / 1000).toFixed(1)} km (~${Math.round(carRoute.duration / 60)} min)`,
-  }];
+  const fastest: RouteSegment[] = [
+    {
+      mode: "motorcycle" as TransportMode,
+      distanceMeters: carRoute.distance,
+      durationSeconds: carRoute.duration,
+      geometry: carRoute.geometry.coordinates,
+      instruction: `Head ${dir} — motorcycle, ${(carRoute.distance / 1000).toFixed(1)} km (~${Math.round(carRoute.duration / 60)} min)`,
+    },
+  ];
 
   let weatherAware: RouteSegment[];
   if (transitResult.primarySegments) {
     weatherAware = transitResult.primarySegments;
   } else if (footRoute) {
-    weatherAware = [{
-      mode: "transjakarta" as TransportMode,
-      distanceMeters: footRoute.distance,
-      durationSeconds: footRoute.duration,
-      geometry: footRoute.geometry.coordinates,
-      instruction: "No direct transit found — walking route shown.",
-    }];
+    weatherAware = [
+      {
+        mode: "transjakarta" as TransportMode,
+        distanceMeters: footRoute.distance,
+        durationSeconds: footRoute.duration,
+        geometry: footRoute.geometry.coordinates,
+        instruction: "No direct transit found — walking route shown.",
+      },
+    ];
   } else {
     return null;
   }
@@ -103,13 +113,17 @@ export async function fetchRoute(
   destination: Coordinates,
   mode: TransportMode,
 ): Promise<RouteSegment[] | null> {
-  const profile = ["transjakarta", "mrt", "lrt", "walking"].includes(mode) ? "foot" : "car";
+  const profile = ["transjakarta", "mrt", "lrt", "walking"].includes(mode)
+    ? "foot"
+    : "car";
   const route = await fetchOsrmRoute(origin, destination, profile);
   if (!route) return null;
-  return [{
-    mode,
-    distanceMeters: route.distance,
-    durationSeconds: route.duration,
-    geometry: route.geometry.coordinates,
-  }];
+  return [
+    {
+      mode,
+      distanceMeters: route.distance,
+      durationSeconds: route.duration,
+      geometry: route.geometry.coordinates,
+    },
+  ];
 }

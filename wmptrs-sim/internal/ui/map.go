@@ -29,6 +29,43 @@ type mapView struct {
 	frac         float64 // fraction of the cmp route drawn
 	showForecast bool
 	t            float64
+
+	net *sim.Network // defaults to the app's network
+
+	// heat, when non-nil, colours every street edge of heatKind by its DP
+	// cost multiplier 1 + βEφ(r_f) computed on heatField.
+	heat      *model.Params
+	heatKind  model.Kind
+	heatField []float64
+
+	// trace, when non-nil, shows the first traceN settled nodes of a search.
+	trace  []int32
+	traceN int
+	noBase bool // hide the dim A0 route
+
+	marks []mapMark // extra glyphs drawn on top (traveller, raincoat stop)
+}
+
+// mapMark is a glyph placed at city coordinates (km).
+type mapMark struct {
+	x, y float64
+	r    rune
+	col  uint8
+}
+
+// heatColor maps a cost multiplier to a colour; ok=false for ~no penalty.
+func heatColor(m float64) (uint8, bool) {
+	switch {
+	case m < 1.08:
+		return 0, false
+	case m < 1.3:
+		return cGoldDim, true
+	case m < 1.6:
+		return cGold, true
+	case m < 1.9:
+		return cAmber, true
+	}
+	return cRed, true
 }
 
 func (m *cityMap) draw(a *App, c *Canvas, w, h int, v mapView) {
@@ -36,6 +73,9 @@ func (m *cityMap) draw(a *App, c *Canvas, w, h int, v mapView) {
 		return
 	}
 	net := a.net
+	if v.net != nil {
+		net = v.net
+	}
 	m.br.Reset(w, h)
 	dw, dh := float64(m.br.DotsW()), float64(m.br.DotsH())
 	s := math.Min((dw-2)/sim.GridW, (dh-2)/sim.GridH)
@@ -81,6 +121,22 @@ func (m *cityMap) draw(a *App, c *Canvas, w, h int, v mapView) {
 		}
 	}
 
+	if v.heat != nil && v.heatField != nil {
+		for e := 0; e < net.NumEdges(); e++ {
+			if net.Kind[e] != v.heatKind || net.From[e] > net.To[e] {
+				continue
+			}
+			mult := 1 + v.heat.Beta*v.heatKind.Exposure()*model.Phi(v.heatField[e], *v.heat)
+			col, ok := heatColor(mult)
+			if !ok {
+				continue
+			}
+			x0, y0 := toDot(net.NodeX[net.From[e]], net.NodeY[net.From[e]])
+			x1, y1 := toDot(net.NodeX[net.To[e]], net.NodeY[net.To[e]])
+			m.br.Line(x0, y0, x1, y1, col)
+		}
+	}
+
 	for _, ln := range net.Lines {
 		col := cFaint
 		if ln.Rail {
@@ -119,9 +175,21 @@ func (m *cityMap) draw(a *App, c *Canvas, w, h int, v mapView) {
 			k++
 		}
 	}
+	for i := 0; i < min(v.traceN, len(v.trace)); i++ {
+		u := v.trace[i]
+		x, y := toDot(net.NodeX[u], net.NodeY[u])
+		col := cBorderHi
+		if i > v.traceN-40 {
+			col = cWhite // the moving frontier
+		}
+		m.br.Dot(int(math.Round(x)), int(math.Round(y)), col)
+		m.br.Dot(int(math.Round(x))+1, int(math.Round(y)), col)
+	}
 	if v.j != nil {
-		drawPath(v.j.Out[v.base].Path, 1, func(model.Kind) uint8 { return cDim })
-		if v.cmp != v.base {
+		if !v.noBase {
+			drawPath(v.j.Out[v.base].Path, 1, func(model.Kind) uint8 { return cDim })
+		}
+		if v.cmp != v.base || v.noBase {
 			drawPath(v.j.Out[v.cmp].Path, v.frac, func(k model.Kind) uint8 { return kindColor[k] })
 		}
 	}
@@ -141,5 +209,9 @@ func (m *cityMap) draw(a *App, c *Canvas, w, h int, v mapView) {
 		dx, dy := toDot(float64(v.j.DX), float64(v.j.DY))
 		c.PutA(int(ox/2), int(oy/4), 'O', cWhite, attrBold)
 		c.PutA(int(dx/2), int(dy/4), 'D', cAmber, attrBold)
+	}
+	for _, mk := range v.marks {
+		x, y := toDot(mk.x, mk.y)
+		c.PutA(int(x/2), int(y/4), mk.r, mk.col, attrBold)
 	}
 }

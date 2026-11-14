@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { db } from "@/lib/db";
 import DataTestingDashboard from "@/components/data-testing/DataTestingDashboard";
+import { db } from "@/lib/db";
 
 export const metadata: Metadata = {
   title: "W-MPTRS — Data Testing & Validation",

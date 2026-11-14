@@ -1,8 +1,12 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import type {
-  AppState, Coordinates, RainfallIntensity, RouteOption,
-  WeatherData, WeatherForecastEntry,
+  AppState,
+  Coordinates,
+  RainfallIntensity,
+  RouteOption,
+  WeatherData,
+  WeatherForecastEntry,
 } from "@/types";
 
 export interface AppStore extends AppState {
@@ -30,7 +34,12 @@ const initialState: AppState = {
   forecast: [],
   routes: [],
   selectedRoute: null,
-  simulation: { active: false, intensity: "none", windSpeedKmh: 0, humidityPct: 80 },
+  simulation: {
+    active: false,
+    intensity: "none",
+    windSpeedKmh: 0,
+    humidityPct: 80,
+  },
   isLoading: false,
   error: null,
 };
@@ -47,7 +56,12 @@ export const useAppStore = create<AppStore>()(
       setRoutes: (routes) => set({ routes }),
       setSelectedRoute: (id) => set({ selectedRoute: id }),
 
-      setSimulation: (active, intensity = "heavy", windSpeedKmh = 20, humidityPct = 85) =>
+      setSimulation: (
+        active,
+        intensity = "heavy",
+        windSpeedKmh = 20,
+        humidityPct = 85,
+      ) =>
         set({
           simulation: {
             active,

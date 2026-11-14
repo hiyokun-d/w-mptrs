@@ -1,0 +1,774 @@
+{
+ "_note": "Station coordinates for the routing network. src says where each one came from; manual ones are approximate.",
+ "krl": {
+  "AC": {
+   "name": "Ancol",
+   "lat": -6.1129,
+   "lng": 106.8459,
+   "src": "import-krl.ts"
+  },
+  "AK": {
+   "name": "Angke",
+   "lat": -6.14474,
+   "lng": 106.80078,
+   "src": "nominatim: Angke, Jalan Angke Barat, RW 01, Angke, Tambora, Jakarta Bar"
+  },
+  "BJD": {
+   "name": "Bojonggede",
+   "lat": -6.4822,
+   "lng": 106.8138,
+   "src": "import-krl.ts"
+  },
+  "BKS": {
+   "name": "Bekasi",
+   "lat": -6.2357,
+   "lng": 106.9921,
+   "src": "import-krl.ts"
+  },
+  "BKST": {
+   "name": "Bekasi Timur",
+   "lat": -6.2468,
+   "lng": 107.0181,
+   "src": "nominatim: Bekasi Timur, Jalan Ir. H. Juanda, Kp Belter, Wisma Jaya, Bu"
+  },
+  "BOI": {
+   "name": "Bojong Indah",
+   "lat": -6.1626,
+   "lng": 106.7413,
+   "src": "import-krl.ts"
+  },
+  "BOO": {
+   "name": "Bogor",
+   "lat": -6.5952,
+   "lng": 106.7977,
+   "src": "import-krl.ts"
+  },
+  "BPR": {
+   "name": "Batu Ceper",
+   "lat": -6.1837,
+   "lng": 106.6602,
+   "src": "import-krl.ts"
+  },
+  "BST": {
+   "name": "Bandara Soekarno Hatta",
+   "lat": -6.1274,
+   "lng": 106.65219,
+   "src": "nominatim: Bandara Soekarno-Hatta, Jalan Raya Bandara, Pajang, Benda, T"
+  },
+  "BUA": {
+   "name": "Buaran",
+   "lat": -6.2184,
+   "lng": 106.9099,
+   "src": "import-krl.ts"
+  },
+  "CBN": {
+   "name": "Cibinong",
+   "lat": -6.46425,
+   "lng": 106.85252,
+   "src": "nominatim: Cibinong, Jalan Pabuaran, Pabuaran, Cibinong, Kab Bogor, Jaw"
+  },
+  "CC": {
+   "name": "Cicayur",
+   "lat": -6.2612,
+   "lng": 106.5985,
+   "src": "import-krl.ts"
+  },
+  "CIT": {
+   "name": "Cibitung",
+   "lat": -6.24,
+   "lng": 107.048,
+   "src": "import-krl.ts"
+  },
+  "CJT": {
+   "name": "Cilejit",
+   "lat": -6.35436,
+   "lng": 106.50958,
+   "src": "nominatim: Stasiun Cilejit, Jalan Pasai Barat 3, Pasai Barat, Sukamanah"
+  },
+  "CKI": {
+   "name": "Cikini",
+   "lat": -6.1984,
+   "lng": 106.8445,
+   "src": "import-krl.ts"
+  },
+  "CKR": {
+   "name": "Cikarang",
+   "lat": -6.2511,
+   "lng": 107.1478,
+   "src": "import-krl.ts"
+  },
+  "CKY": {
+   "name": "Cikoya",
+   "lat": -6.33557,
+   "lng": 106.41178,
+   "src": "nominatim: Stasiun Cikoya, Jalan Raya Citeras - Tigaraksa, Pasirmalaka,"
+  },
+  "CLT": {
+   "name": "Cilebut",
+   "lat": -6.5334,
+   "lng": 106.8254,
+   "src": "import-krl.ts"
+  },
+  "CSK": {
+   "name": "Cisauk",
+   "lat": -6.2736,
+   "lng": 106.5803,
+   "src": "import-krl.ts"
+  },
+  "CTA": {
+   "name": "Citayam",
+   "lat": -6.4367,
+   "lng": 106.8242,
+   "src": "import-krl.ts"
+  },
+  "CTR": {
+   "name": "Citeras",
+   "lat": -6.302,
+   "lng": 106.3063,
+   "src": "import-krl.ts"
+  },
+  "CUK": {
+   "name": "Cakung",
+   "lat": -6.1921,
+   "lng": 106.935,
+   "src": "import-krl.ts"
+  },
+  "CW": {
+   "name": "Cawang",
+   "lat": -6.2577,
+   "lng": 106.8679,
+   "src": "import-krl.ts"
+  },
+  "DAR": {
+   "name": "Daru",
+   "lat": -6.33804,
+   "lng": 106.49241,
+   "src": "nominatim: Stasiun Daru, Jalan Buyut Awi Tali, Perumahan Daru Indah, Da"
+  },
+  "DP": {
+   "name": "Depok",
+   "lat": -6.392,
+   "lng": 106.8286,
+   "src": "import-krl.ts"
+  },
+  "DPB": {
+   "name": "Depok Baru",
+   "lat": -6.3699,
+   "lng": 106.8285,
+   "src": "import-krl.ts"
+  },
+  "DRN": {
+   "name": "Duren Kalibata",
+   "lat": -6.2624,
+   "lng": 106.8539,
+   "src": "import-krl.ts"
+  },
+  "DU": {
+   "name": "Duri",
+   "lat": -6.1702,
+   "lng": 106.7939,
+   "src": "import-krl.ts"
+  },
+  "GDD": {
+   "name": "Gondangdia",
+   "lat": -6.1944,
+   "lng": 106.836,
+   "src": "import-krl.ts"
+  },
+  "GGL": {
+   "name": "Grogol",
+   "lat": -6.1736,
+   "lng": 106.792,
+   "src": "import-krl.ts"
+  },
+  "GST": {
+   "name": "Gang Sentiong",
+   "lat": -6.18604,
+   "lng": 106.85076,
+   "src": "nominatim: Gang Sentiong, Jalan Inspeksi, RW 06, Kramat, Senen, Jakarta"
+  },
+  "JAKK": {
+   "name": "Jakarta Kota",
+   "lat": -6.1378,
+   "lng": 106.8135,
+   "src": "import-krl.ts"
+  },
+  "JAY": {
+   "name": "Jayakarta",
+   "lat": -6.1389,
+   "lng": 106.8157,
+   "src": "import-krl.ts"
+  },
+  "JMU": {
+   "name": "Jurang Mangu",
+   "lat": -6.2653,
+   "lng": 106.7219,
+   "src": "import-krl.ts"
+  },
+  "JNG": {
+   "name": "Jatinegara",
+   "lat": -6.2145,
+   "lng": 106.8697,
+   "src": "import-krl.ts"
+  },
+  "JUA": {
+   "name": "Juanda",
+   "lat": -6.1658,
+   "lng": 106.8299,
+   "src": "import-krl.ts"
+  },
+  "KAT": {
+   "name": "Karet",
+   "lat": -6.20086,
+   "lng": 106.816,
+   "src": "nominatim: Stasiun Karet, Jalan Kyai Haji Mas Mansyur, RW 05, Kebon Mel"
+  },
+  "KBY": {
+   "name": "Kebayoran",
+   "lat": -6.235,
+   "lng": 106.762,
+   "src": "import-krl.ts"
+  },
+  "KDS": {
+   "name": "Kalideres",
+   "lat": -6.1612,
+   "lng": 106.7025,
+   "src": "import-krl.ts"
+  },
+  "KLD": {
+   "name": "Klender",
+   "lat": -6.2235,
+   "lng": 106.901,
+   "src": "import-krl.ts"
+  },
+  "KLDB": {
+   "name": "Klender Baru",
+   "lat": -6.213,
+   "lng": 106.923,
+   "src": "import-krl.ts"
+  },
+  "KMO": {
+   "name": "Kemayoran",
+   "lat": -6.16168,
+   "lng": 106.84152,
+   "src": "nominatim: Kemayoran, Jalan Bungur Besar 17, RW 04, Gunung Sahari Selat"
+  },
+  "KMT": {
+   "name": "Kramat",
+   "lat": -6.19357,
+   "lng": 106.85645,
+   "src": "nominatim: Kramat, Jalan Percetakan Negara III, RW 01, Rawasari, Cempak"
+  },
+  "KPB": {
+   "name": "Kampung Bandan",
+   "lat": -6.1265,
+   "lng": 106.8251,
+   "src": "import-krl.ts"
+  },
+  "KRI": {
+   "name": "Kranji",
+   "lat": -6.2536,
+   "lng": 106.9652,
+   "src": "import-krl.ts"
+  },
+  "LNA": {
+   "name": "Lenteng Agung",
+   "lat": -6.3205,
+   "lng": 106.8309,
+   "src": "import-krl.ts"
+  },
+  "MGB": {
+   "name": "Mangga Besar",
+   "lat": -6.1467,
+   "lng": 106.824,
+   "src": "import-krl.ts"
+  },
+  "MJ": {
+   "name": "Maja",
+   "lat": -6.2717,
+   "lng": 106.3617,
+   "src": "import-krl.ts"
+  },
+  "MRI": {
+   "name": "Manggarai",
+   "lat": -6.2143,
+   "lng": 106.8506,
+   "src": "import-krl.ts"
+  },
+  "MTR": {
+   "name": "Matraman",
+   "lat": -6.21257,
+   "lng": 106.85975,
+   "src": "nominatim: Matraman, Jalan Permata I, RW 06, Kampung Melayu, Jatinegara"
+  },
+  "NMO": {
+   "name": "Nambo",
+   "lat": -6.3706,
+   "lng": 106.906,
+   "src": "import-krl.ts"
+  },
+  "PDJ": {
+   "name": "Pondok Ranji",
+   "lat": -6.27668,
+   "lng": 106.74469,
+   "src": "nominatim: Pondok Ranji, Gang Haji Sabit, Peladen, Pondok Ranji, Ciputa"
+  },
+  "PDRG": {
+   "name": "Pondok Rajeg",
+   "lat": -6.46078,
+   "lng": 106.8243,
+   "src": "nominatim: Pondok Rajeg, Jalan Pondok Rajeg, Harapanjaya, Depok, Kab Bo"
+  },
+  "PI": {
+   "name": "Poris",
+   "lat": -6.1774,
+   "lng": 106.6789,
+   "src": "import-krl.ts"
+  },
+  "PLM": {
+   "name": "Palmerah",
+   "lat": -6.2015,
+   "lng": 106.7952,
+   "src": "import-krl.ts"
+  },
+  "POC": {
+   "name": "Pondok Cina",
+   "lat": -6.368,
+   "lng": 106.8333,
+   "src": "import-krl.ts"
+  },
+  "POK": {
+   "name": "Pondok Jati",
+   "lat": -6.4157,
+   "lng": 106.8684,
+   "src": "import-krl.ts"
+  },
+  "PRP": {
+   "name": "Parung Panjang",
+   "lat": -6.34426,
+   "lng": 106.56995,
+   "src": "nominatim: Stasiun Parung Panjang, Jalan Sayuti, Ciparay, Parungpanjang"
+  },
+  "PSE": {
+   "name": "Pasar Senen",
+   "lat": -6.17442,
+   "lng": 106.84457,
+   "src": "nominatim: Pasar Senen, Jalan Bungur Besar Raya, RW 04, Senen, Jakarta "
+  },
+  "PSG": {
+   "name": "Pesing",
+   "lat": -6.174,
+   "lng": 106.7669,
+   "src": "import-krl.ts"
+  },
+  "PSM": {
+   "name": "Pasar Minggu",
+   "lat": -6.2868,
+   "lng": 106.8434,
+   "src": "import-krl.ts"
+  },
+  "PSMB": {
+   "name": "Pasar Minggu Baru",
+   "lat": -6.2795,
+   "lng": 106.843,
+   "src": "import-krl.ts"
+  },
+  "RJW": {
+   "name": "Rajawali",
+   "lat": -6.14509,
+   "lng": 106.83681,
+   "src": "nominatim: Rajawali, Jalan Pemandangan IV, RW 01, Gunung Sahari Utara, "
+  },
+  "RK": {
+   "name": "Rangkasbitung",
+   "lat": -6.3569,
+   "lng": 106.2518,
+   "src": "import-krl.ts"
+  },
+  "RU": {
+   "name": "Rawa Buntu",
+   "lat": -6.3189,
+   "lng": 106.6843,
+   "src": "import-krl.ts"
+  },
+  "RW": {
+   "name": "Rawa Buaya",
+   "lat": -6.1604,
+   "lng": 106.7277,
+   "src": "import-krl.ts"
+  },
+  "SDM": {
+   "name": "Sudimara",
+   "lat": -6.2944,
+   "lng": 106.706,
+   "src": "import-krl.ts"
+  },
+  "SRP": {
+   "name": "Serpong",
+   "lat": -6.3175,
+   "lng": 106.6695,
+   "src": "import-krl.ts"
+  },
+  "SUD": {
+   "name": "Sudirman",
+   "lat": -6.20252,
+   "lng": 106.82364,
+   "src": "nominatim: Stasiun Sudirman, Jalan Kendal, RW 06, Menteng, Jakarta Pusa"
+  },
+  "SUDB": {
+   "name": "Sudirman Baru",
+   "lat": -6.2018,
+   "lng": 106.8186,
+   "src": "manual: BNI City / Sudirman Baru (Dukuh Atas), approx"
+  },
+  "SW": {
+   "name": "Sawah Besar",
+   "lat": -6.1547,
+   "lng": 106.8198,
+   "src": "import-krl.ts"
+  },
+  "TB": {
+   "name": "Tambun",
+   "lat": -6.2434,
+   "lng": 107.0858,
+   "src": "import-krl.ts"
+  },
+  "TEB": {
+   "name": "Tebet",
+   "lat": -6.2334,
+   "lng": 106.8605,
+   "src": "import-krl.ts"
+  },
+  "TEJ": {
+   "name": "Tenjo",
+   "lat": -6.2267,
+   "lng": 106.4785,
+   "src": "import-krl.ts"
+  },
+  "TGS": {
+   "name": "Tigaraksa",
+   "lat": -6.2612,
+   "lng": 106.5261,
+   "src": "import-krl.ts"
+  },
+  "THB": {
+   "name": "Tanah Abang",
+   "lat": -6.1966,
+   "lng": 106.8136,
+   "src": "import-krl.ts"
+  },
+  "TKO": {
+   "name": "Taman Kota",
+   "lat": -6.1689,
+   "lng": 106.7506,
+   "src": "import-krl.ts"
+  },
+  "TLM": {
+   "name": "Metland Telagamurni",
+   "lat": -6.25747,
+   "lng": 107.11123,
+   "src": "nominatim: Metland Telagamurni, Jalan Kenanga III, Perum Telaga Murni, "
+  },
+  "TNG": {
+   "name": "Tangerang",
+   "lat": -6.1783,
+   "lng": 106.6358,
+   "src": "import-krl.ts"
+  },
+  "TNT": {
+   "name": "Tanjung Barat",
+   "lat": -6.3075,
+   "lng": 106.835,
+   "src": "import-krl.ts"
+  },
+  "TPK": {
+   "name": "Tanjung Priok",
+   "lat": -6.1075,
+   "lng": 106.8817,
+   "src": "import-krl.ts"
+  },
+  "TTI": {
+   "name": "Tanah Tinggi",
+   "lat": -6.1897,
+   "lng": 106.6445,
+   "src": "import-krl.ts"
+  },
+  "UI": {
+   "name": "Universitas Indonesia",
+   "lat": -6.3589,
+   "lng": 106.8329,
+   "src": "import-krl.ts"
+  },
+  "UP": {
+   "name": "Universitas Pancasila",
+   "lat": -6.33935,
+   "lng": 106.83426,
+   "src": "nominatim: Universitas Pancasila, Jalan Lenteng Agung Raya, RW 08, Lent"
+  }
+ },
+ "mrt": [
+  {
+   "id": "mrt_lbg",
+   "name": "Lebak Bulus Grab",
+   "lat": -6.3194,
+   "lng": 106.7741,
+   "src": "import-mrt-lrt.ts"
+  },
+  {
+   "id": "mrt_ftm",
+   "name": "Fatmawati Indomaret",
+   "lat": -6.2999,
+   "lng": 106.7949,
+   "src": "import-mrt-lrt.ts"
+  },
+  {
+   "id": "mrt_cpr",
+   "name": "Cipete Raya",
+   "lat": -6.2845,
+   "lng": 106.799,
+   "src": "import-mrt-lrt.ts"
+  },
+  {
+   "id": "mrt_hnw",
+   "name": "Haji Nawi",
+   "lat": -6.2696,
+   "lng": 106.7952,
+   "src": "import-mrt-lrt.ts"
+  },
+  {
+   "id": "mrt_bla",
+   "name": "Blok A",
+   "lat": -6.2591,
+   "lng": 106.796,
+   "src": "import-mrt-lrt.ts"
+  },
+  {
+   "id": "mrt_blm",
+   "name": "Blok M BCA",
+   "lat": -6.2442,
+   "lng": 106.7973,
+   "src": "import-mrt-lrt.ts"
+  },
+  {
+   "id": "mrt_asn",
+   "name": "ASEAN",
+   "lat": -6.2345,
+   "lng": 106.8013,
+   "src": "import-mrt-lrt.ts"
+  },
+  {
+   "id": "mrt_sny",
+   "name": "Senayan",
+   "lat": -6.2237,
+   "lng": 106.8016,
+   "src": "import-mrt-lrt.ts"
+  },
+  {
+   "id": "mrt_ist",
+   "name": "Istora Mandiri",
+   "lat": -6.2175,
+   "lng": 106.8054,
+   "src": "import-mrt-lrt.ts"
+  },
+  {
+   "id": "mrt_bdh",
+   "name": "Bendungan Hilir",
+   "lat": -6.2117,
+   "lng": 106.8133,
+   "src": "import-mrt-lrt.ts"
+  },
+  {
+   "id": "mrt_stb",
+   "name": "Setiabudi Astra",
+   "lat": -6.2072,
+   "lng": 106.8216,
+   "src": "import-mrt-lrt.ts"
+  },
+  {
+   "id": "mrt_dka",
+   "name": "Dukuh Atas BNI",
+   "lat": -6.2014,
+   "lng": 106.8229,
+   "src": "import-mrt-lrt.ts"
+  },
+  {
+   "id": "mrt_bhi",
+   "name": "Bundaran HI",
+   "lat": -6.1944,
+   "lng": 106.8229,
+   "src": "import-mrt-lrt.ts"
+  }
+ ],
+ "lrt_jakarta": [
+  {
+   "id": "lrtj_pgd",
+   "name": "Pegangsaan Dua",
+   "lat": -6.1482,
+   "lng": 106.9092,
+   "src": "import-mrt-lrt.ts"
+  },
+  {
+   "id": "lrtj_bnu",
+   "name": "Boulevard Utara",
+   "lat": -6.1618,
+   "lng": 106.9126,
+   "src": "import-mrt-lrt.ts"
+  },
+  {
+   "id": "lrtj_bns",
+   "name": "Boulevard Selatan",
+   "lat": -6.174,
+   "lng": 106.9116,
+   "src": "import-mrt-lrt.ts"
+  },
+  {
+   "id": "lrtj_plm",
+   "name": "Pulomas",
+   "lat": -6.1893,
+   "lng": 106.9025,
+   "src": "import-mrt-lrt.ts"
+  },
+  {
+   "id": "lrtj_eqs",
+   "name": "Equestrian",
+   "lat": -6.1963,
+   "lng": 106.8969,
+   "src": "import-mrt-lrt.ts"
+  },
+  {
+   "id": "lrtj_vld",
+   "name": "Velodrome",
+   "lat": -6.2042,
+   "lng": 106.8939,
+   "src": "import-mrt-lrt.ts"
+  }
+ ],
+ "lrt_jabodebek": [
+  {
+   "id": "lrtb_hjm",
+   "name": "Harjamukti",
+   "lat": -6.37361,
+   "lng": 106.89562,
+   "src": "nominatim: Stasiun LRT Harjamukti, Jalan Tol Jakarta–Bogor–Ciawi, RW 07, Cibubur,"
+  },
+  {
+   "id": "lrtb_crc",
+   "name": "Ciracas",
+   "lat": -6.3325,
+   "lng": 106.8898,
+   "src": "manual: between Kp. Rambutan and Harjamukti, approx"
+  },
+  {
+   "id": "lrtb_kpr",
+   "name": "Kampung Rambutan",
+   "lat": -6.30947,
+   "lng": 106.88438,
+   "src": "nominatim: Stasiun LRT Kampung Rambutan, Jalan Bungur, RW 06, Rambutan, Ciracas, "
+  },
+  {
+   "id": "lrtb_tmn",
+   "name": "Taman Mini",
+   "lat": -6.29294,
+   "lng": 106.88057,
+   "src": "nominatim: Stasiun LRT Taman Mini, Jalan Tol Jakarta–Bogor–Ciawi, RW 05, Dukuh, K"
+  },
+  {
+   "id": "lrtb_jtm",
+   "name": "Jatimulya",
+   "lat": -6.26369,
+   "lng": 107.02138,
+   "src": "nominatim: Stasiun LRT Jati Mulya, Jalan Tol Jakarta–Cikampek, Jatimulya, Lambang"
+  },
+  {
+   "id": "lrtb_bkb",
+   "name": "Bekasi Barat",
+   "lat": -6.25253,
+   "lng": 106.98968,
+   "src": "nominatim: Stasiun LRT Bekasi Barat, Jalan Tol Jakarta–Cikampek, Bumi Satria Kenc"
+  },
+  {
+   "id": "lrtb_ck2",
+   "name": "Cikunir 2",
+   "lat": -6.25472,
+   "lng": 106.96305,
+   "src": "nominatim: Stasiun LRT Cikunir 2, Jalan Batu Mulia, Lagoon, Bintarajaya, Bekasi, "
+  },
+  {
+   "id": "lrtb_ck1",
+   "name": "Cikunir 1",
+   "lat": -6.25657,
+   "lng": 106.95187,
+   "src": "nominatim: Stasiun LRT Cikunir 1, Jalan Caman Raya, Bintarajaya, Bekasi, Jawa Bar"
+  },
+  {
+   "id": "lrtb_jtb",
+   "name": "Jatibening Baru",
+   "lat": -6.2505,
+   "lng": 106.9168,
+   "src": "import-mrt-lrt.ts override"
+  },
+  {
+   "id": "lrtb_hlm",
+   "name": "Halim",
+   "lat": -6.24584,
+   "lng": 106.88711,
+   "src": "nominatim: Stasiun LRT Halim, Jalan Tol Jakarta–Cikampek, RW 15, Halim Perdana Ku"
+  },
+  {
+   "id": "lrtb_cwg",
+   "name": "Cawang",
+   "lat": -6.2614,
+   "lng": 106.8684,
+   "src": "import-mrt-lrt.ts override"
+  },
+  {
+   "id": "lrtb_ckk",
+   "name": "Cikoko",
+   "lat": -6.24348,
+   "lng": 106.85707,
+   "src": "nominatim: Stasiun LRT Cikoko, Jalan Letnan Jenderal MT Haryono, RW 02, Cikoko, P"
+  },
+  {
+   "id": "lrtb_clw",
+   "name": "Ciliwung",
+   "lat": -6.2482,
+   "lng": 106.8636,
+   "src": "import-mrt-lrt.ts override"
+  },
+  {
+   "id": "lrtb_dka",
+   "name": "Dukuh Atas",
+   "lat": -6.2014,
+   "lng": 106.8229,
+   "src": "import-mrt-lrt.ts override"
+  },
+  {
+   "id": "lrtb_stb",
+   "name": "Setiabudi",
+   "lat": -6.20926,
+   "lng": 106.83021,
+   "src": "nominatim: Stasiun LRT Setiabudi, Jalan Hajjah R. Rasuna Said, RW 02, Setiabudi, "
+  },
+  {
+   "id": "lrtb_rsd",
+   "name": "Rasuna Said",
+   "lat": -6.22167,
+   "lng": 106.83226,
+   "src": "nominatim: Stasiun LRT Rasuna Said, Jalan Hajjah R. Rasuna Said, RW 05, Karet Kun"
+  },
+  {
+   "id": "lrtb_kng",
+   "name": "Kuningan",
+   "lat": -6.22885,
+   "lng": 106.83322,
+   "src": "nominatim: Stasiun LRT Kuningan, Jalan Hajjah R. Rasuna Said, RW 04, Kuningan Tim"
+  },
+  {
+   "id": "lrtb_pcr",
+   "name": "Pancoran",
+   "lat": -6.24214,
+   "lng": 106.8385,
+   "src": "nominatim: Stasiun LRT Pancoran, Jalan Tol Cawang–Pluit, RW 01, Menteng Dalam, Te"
+  }
+ ]
+}

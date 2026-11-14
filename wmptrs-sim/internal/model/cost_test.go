@@ -99,3 +99,19 @@ func TestInVehicleUnpenalised(t *testing.T) {
 		}
 	}
 }
+
+func TestShelterOverride(t *testing.T) {
+	p := Default()
+	r := 7.5
+	if A3.Cost(10, WaitBRT, r, p) != func() float64 { q := p; q.Shelter = DefaultShelter(); return A3.Cost(10, WaitBRT, r, q) }() {
+		t.Fatal("DefaultShelter must reproduce the paper constants")
+	}
+	p.Shelter = DefaultShelter()
+	p.Shelter.EBRT, p.Shelter.WOut = 0.8, 2
+	if got := A3.Cost(10, WaitBRT, r, p); !near(got, 20*(1+0.8*Phi(r, p))) {
+		t.Errorf("overridden BRT wait = %v", got)
+	}
+	if got := A3.Cost(10, Moto, r, p); !near(got, 10*(1+Phi(r, p))) {
+		t.Errorf("moto must be unaffected = %v", got)
+	}
+}

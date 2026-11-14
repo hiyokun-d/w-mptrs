@@ -19,11 +19,13 @@ type Params struct {
 	Shift    float64 `json:"location_shift_km"`
 	Journeys int     `json:"journeys"`
 	Seed     uint64  `json:"seed"`
+	// Shelter overrides E and w_m for routing and scoring (sensitivity runs).
+	Shelter model.Shelter `json:"-"`
 }
 
 // Model returns the DP model parameters.
 func (p Params) Model() model.Params {
-	return model.Params{Beta: p.Beta, R0: p.R0, K: p.K, AlphaScale: 1}
+	return model.Params{Beta: p.Beta, R0: p.R0, K: p.K, AlphaScale: 1, Shelter: p.Shelter}
 }
 
 // Preset is a named parameter set.
@@ -86,6 +88,7 @@ type evaluator struct {
 	oracle    bool
 	keepPaths bool
 	r0        float64
+	sh        model.Shelter // exposure used to score outcomes
 }
 
 func (ev *evaluator) journey(rt *router, idx int, s Setup, rtrue, rhat []float64, scratch []int32) Journey {
@@ -112,7 +115,7 @@ func (ev *evaluator) journey(rt *router, idx int, s Setup, rtrue, rhat []float64
 			o.Moto, path = true, scratch[:split]
 		}
 		for _, e := range path {
-			tau, ex := n.Tau[e], n.Kind[e].Exposure()
+			tau, ex := n.Tau[e], ev.sh.E(n.Kind[e])
 			o.T += tau
 			o.Dose += tau * ex * rtrue[e] / 60
 			if ex > 0 && rtrue[e] >= ev.r0 {
@@ -211,7 +214,7 @@ func Run(ctx context.Context, p Params, progress chan<- Progress) (*Result, erro
 	}
 	net := NewNetwork(p.Seed)
 	setups := GenSetups(p.Journeys, p.Seed, p.Sigma, p.Shift)
-	ev := &evaluator{net: net, cfgs: VariantConfigs(p.Model()), oracle: true, keepPaths: true, r0: p.R0}
+	ev := &evaluator{net: net, cfgs: VariantConfigs(p.Model()), oracle: true, keepPaths: true, r0: p.R0, sh: p.Shelter}
 	var notify func(int, *Journey)
 	if progress != nil {
 		notify = func(done int, j *Journey) {

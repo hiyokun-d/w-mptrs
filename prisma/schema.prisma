@@ -98,3 +98,66 @@ model RouteHistory {
   @@index([createdAt])
   @@map("routes_history")
 }
+
+// One trip search from the app (anonymous). Both options are stored with
+// their forecast rain per leg so they can be re-scored later on the rain
+// that was actually observed (realised dose) — the paper's evaluation on
+// real trips.
+model PlanLog {
+  id            String   @id @default(cuid())
+  deviceId      String
+  createdAt     DateTime @default(now())
+  depart        DateTime
+  beta          Float
+  moto          String
+  /// app price option at search time (Rp per perceived minute, 0 = off)
+  vot           Float    @default(0)
+  maxOjek       Float    @default(0)
+  scenario      String
+  originLat     Float
+  originLng     Float
+  destLat       Float
+  destLng       Float
+  rainSource    String
+  rainIssuedAt  DateTime?
+  networkVersion String
+  offline       Boolean  @default(false)
+  shift         Boolean
+  fastest       Json?
+  weatherAware  Json?
+
+  // filled by /api/cron/realise after the trip window
+  realisedAt           DateTime?
+  realisedFastestDose  Float?
+  realisedWeatherDose  Float?
+
+  @@index([createdAt])
+  @@index([deviceId])
+  @@index([realisedAt])
+  @@map("plan_log")
+}
+
+/// "Is it raining where you are?" answers from travellers during a trip:
+/// ground truth to set against the forecast (and to catch what it missed)
+model RainReport {
+  id          String   @id @default(cuid())
+  deviceId    String
+  createdAt   DateTime @default(now())
+  /// when it was asked (trip clock; a simulated trip can be in the future)
+  at          DateTime
+  /// rounded to ~100 m
+  lat         Float
+  lng         Float
+  /// 0 dry · 3 light · 15 heavy (mm/h)
+  mmh         Float
+  /// what the forecast said for that place and minute
+  forecastMmh Float
+  /// mid (during the trip) or end (on arrival)
+  moment      String
+  scenario    String
+  /// a simulated trip (demo clock) rather than a real one
+  simulated   Boolean  @default(false)
+
+  @@index([createdAt])
+  @@map("rain_reports")
+}

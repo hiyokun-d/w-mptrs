@@ -1,0 +1,30 @@
+{
+ "version": "e50a1e623c",
+ "builtAt": "2026-11-14T12:58:44.768Z",
+ "bytes": 445203,
+ "counts": {
+  "stops": 8270,
+  "routes": 251,
+  "patterns": 951
+ },
+ "sources": [
+  {
+   "name": "TransJakarta GTFS (official)",
+   "url": "https://gtfs.transjakarta.co.id/files/file_gtfs.zip",
+   "fetchedAt": "2026-11-14T12:58:44.112Z",
+   "note": "local copy (tj.zip); 694 trip patterns, 0 skipped (expired or incomplete)"
+  },
+  {
+   "name": "KRL Commuter Line timetable (Comuline API, from KAI Commuter)",
+   "url": "https://api.comuline.com",
+   "fetchedAt": "2026-11-14T12:27:16.985Z",
+   "note": "timetable data last updated 2025-03-30 14:51:19.047877+00; 2037 trains in 241 stopping patterns"
+  },
+  {
+   "name": "MRT Jakarta, LRT Jakarta, LRT Jabodebek",
+   "url": "scripts/data/rail-lines.ts",
+   "fetchedAt": "2026-11-14T12:58:44.760Z",
+   "note": "published end-to-end run times and headways by time of day (approximate); MRT Phase 1 only (Phase 2A opens late 2027)"
+  }
+ ]
+}

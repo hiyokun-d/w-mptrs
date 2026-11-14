@@ -12,6 +12,45 @@ type Params struct {
 	// AlphaScale multiplies the A2 linear coefficients (1 = paper values).
 	// Only used for the A2 family in the trade-off sweep.
 	AlphaScale float64
+	// Shelter overrides the exposure and value-of-time constants for the
+	// sensitivity analysis; the zero value means the paper defaults.
+	Shelter Shelter
+}
+
+// Shelter holds the assumed constants a reviewer is most likely to question.
+// When Set is false every method returns the paper default.
+type Shelter struct {
+	Set   bool
+	EBRT  float64 // exposure while waiting at an open BRT halte (default 0.4)
+	ERail float64 // exposure while waiting in a rail station (default 0.1)
+	WOut  float64 // value-of-time weight for walking and waiting (default 1.5)
+}
+
+// E is the exposure coefficient of k under these constants.
+func (s Shelter) E(k Kind) float64 {
+	if s.Set {
+		switch k {
+		case WaitBRT:
+			return s.EBRT
+		case WaitRail:
+			return s.ERail
+		}
+	}
+	return k.Exposure()
+}
+
+// W is the value-of-time weight of k under these constants.
+func (s Shelter) W(k Kind) float64 {
+	if s.Set && k.Weight() > 1 {
+		return s.WOut
+	}
+	return k.Weight()
+}
+
+// DefaultShelter returns the paper constants with Set = true, as a starting
+// point for one-at-a-time changes.
+func DefaultShelter() Shelter {
+	return Shelter{Set: true, EBRT: 0.4, ERail: 0.1, WOut: 1.5}
 }
 
 // Default returns the paper's default parameters.

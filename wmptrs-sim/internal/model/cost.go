@@ -83,10 +83,10 @@ func (v Variant) Describe() string { return variantDesc[v] }
 // Cost is the generalised cost of an edge with travel time tau (minutes) and
 // forecast rain rhat (mm/h) under variant v.
 func (v Variant) Cost(tau float64, k Kind, rhat float64, p Params) float64 {
-	base := tau * k.Weight()
+	base := tau * p.Shelter.W(k)
 	switch v {
 	case A1:
-		if k.Exposure() > 0 && rhat >= p.R0 {
+		if p.Shelter.E(k) > 0 && rhat >= p.R0 {
 			return base * (1 + p.Beta)
 		}
 		return base
@@ -97,9 +97,9 @@ func (v Variant) Cost(tau float64, k Kind, rhat float64, p Params) float64 {
 		}
 		return base * (1 + p.AlphaScale*k.alpha()*excess)
 	case A3:
-		return base * (1 + p.Beta*k.Exposure()*Phi(rhat, p))
+		return base * (1 + p.Beta*p.Shelter.E(k)*Phi(rhat, p))
 	case A4:
-		e := k.Exposure()
+		e := p.Shelter.E(k)
 		if k.IsWait() {
 			e = 0
 		}

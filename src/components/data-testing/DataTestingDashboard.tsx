@@ -65,7 +65,7 @@ export default function DataTestingDashboard({ history }: Props) {
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <a href="/" className="text-xs text-[#475569] hover:text-[#94a3b8] transition-colors">
+                <a href="/status" className="text-xs text-[#475569] hover:text-[#94a3b8] transition-colors">
                   ← W-MPTRS
                 </a>
                 <span className="text-[#1e2530]">/</span>

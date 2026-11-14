@@ -59,8 +59,10 @@ type benchDoneMsg struct {
 }
 
 var globalKeys = struct {
-	next, prev, help, quit, run key.Binding
+	next, prev, help, quit, run, menu, lang key.Binding
 }{
+	lang: key.NewBinding(key.WithKeys("L"), key.WithHelp("L", "EN/ID")),
+	menu: key.NewBinding(key.WithKeys("m"), key.WithHelp("m", "menu")),
 	next: key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next")),
 	prev: key.NewBinding(key.WithKeys("shift+tab"), key.WithHelp("⇧tab", "prev")),
 	help: key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
@@ -83,9 +85,6 @@ type App struct {
 	cur, prev int
 	trans     Spring
 	transDir  int
-	tabX      Spring
-	tabW      Spring
-	tabPos    []int
 	help      bool
 
 	t        float64
@@ -140,15 +139,26 @@ func newApp(p sim.Params) *App {
 		params: p,
 		net:    sim.NewNetwork(p.Seed),
 		trans:  newSpring(7, 0.8),
-		tabX:   newSpring(9, 0.7),
-		tabW:   newSpring(9, 0.7),
 		bg:     newRainField(0.012, 6, 8, 7),
 		last:   time.Now(),
 	}
 	a.trans.Jump(1)
-	a.screens = []screen{
-		newSplash(), newParams(), newRunScreen(), newResults(), newTradeoff(), newPhi(), newBenchScreen(),
-	}
+	a.screens = make([]screen, numScreens)
+	a.screens[scrIntro] = newSplash()
+	a.screens[scrMenu] = newMenu()
+	a.screens[scrGuide] = newGuide()
+	a.screens[scrSymbols] = newSymbols()
+	a.screens[scrCases] = newCases()
+	a.screens[scrAlert] = newAlert()
+	a.screens[scrParams] = newParams()
+	a.screens[scrRun] = newRunScreen()
+	a.screens[scrResults] = newResults()
+	a.screens[scrTradeoff] = newTradeoff()
+	a.screens[scrPhi] = newPhi()
+	a.screens[scrData] = newData()
+	a.screens[scrRobust] = newRobust()
+	a.screens[scrQA] = newQA()
+	a.screens[scrBench] = newBenchScreen()
 	return a
 }
 
@@ -157,7 +167,7 @@ func tick(d time.Duration) tea.Cmd {
 }
 
 func (a *App) Init() tea.Cmd {
-	return tea.Batch(tick(fastTick), tea.SetWindowTitle("wmptrs-sim"), a.screens[0].enter(a))
+	return tea.Batch(tick(fastTick), tea.SetWindowTitle(fullName+" · simulator"), a.screens[0].enter(a))
 }
 
 func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -212,6 +222,10 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return a, nil
 
+	case robustDoneMsg:
+		a.screens[scrRobust].(*robustScreen).receive(msg)
+		return a, nil
+
 	case benchDoneMsg:
 		if msg.id == a.benchID {
 			a.benchRunning = false
@@ -246,6 +260,13 @@ func (a *App) handleKey(msg tea.KeyMsg) tea.Cmd {
 	case key.Matches(msg, globalKeys.help):
 		a.help = true
 		return nil
+	case key.Matches(msg, globalKeys.lang):
+		langID = !langID
+		return nil
+	case key.Matches(msg, globalKeys.menu) && a.cur != scrMenu:
+		return a.switchTo(scrMenu, -1)
+	case msg.String() == "esc" && a.cur != scrMenu:
+		return a.switchTo(scrMenu, -1)
 	case key.Matches(msg, globalKeys.next):
 		return a.switchTo((a.cur+1)%len(a.screens), 1)
 	case key.Matches(msg, globalKeys.prev):
@@ -269,8 +290,8 @@ func (a *App) switchTo(i, dir int) tea.Cmd {
 // startRunAndShow launches a run and slides to the live-run screen.
 func (a *App) startRunAndShow() tea.Cmd {
 	cmd := a.startRun()
-	if a.cur != 2 {
-		return tea.Batch(cmd, a.switchTo(2, sign(2-a.cur)))
+	if a.cur != scrRun {
+		return tea.Batch(cmd, a.switchTo(scrRun, sign(scrRun-a.cur)))
 	}
 	return cmd
 }
@@ -360,12 +381,6 @@ func (a *App) advance(dt float64) bool {
 		a.spinTime = 0
 		a.spinIdx++
 	}
-	if len(a.tabPos) > 0 {
-		a.tabX.Target = float64(a.tabPos[2*a.cur])
-		a.tabW.Target = float64(a.tabPos[2*a.cur+1])
-		moving = a.tabX.Step(a.steps) || moving
-		moving = a.tabW.Step(a.steps) || moving
-	}
 	moving = a.screens[a.cur].tick(a, a.steps) || moving
 	if a.trans.Pos < 1 || a.trans.Vel != 0 {
 		a.screens[a.prev].tick(a, a.steps)
@@ -423,32 +438,8 @@ func (a *App) View() string {
 	return c.Render(a.th)
 }
 
+// drawHeader shows the full system name, where you are, and what is next.
 func (a *App) drawHeader(c *Canvas) {
-	x := 1
-	x += c.TextA(x, 0, "W-MPTRS", cRain, attrBold)
-	x += c.Text(x, 0, "·sim", cDim)
-	x += 3
-	first := len(a.tabPos) == 0
-	a.tabPos = a.tabPos[:0]
-	for i, s := range a.screens {
-		name := s.title()
-		w := utf8.RuneCountInString(name)
-		a.tabPos = append(a.tabPos, x, w)
-		if i == a.cur {
-			c.TextA(x, 0, name, cWhite, a.hl())
-		} else {
-			c.Text(x, 0, name, cDim)
-		}
-		x += w + 2
-	}
-	if first {
-		a.tabX.Jump(float64(a.tabPos[2*a.cur]))
-		a.tabW.Jump(float64(a.tabPos[2*a.cur+1]))
-	}
-	ux, uw := int(a.tabX.Pos+0.5), int(a.tabW.Pos+0.5)
-	for i := 0; i < uw; i++ {
-		c.Put(ux+i, 1, '▔', cRain)
-	}
 	status := fmt.Sprintf("seed %d · β %.2f", a.params.Seed, a.params.Beta)
 	switch {
 	case a.running:
@@ -458,8 +449,43 @@ func (a *App) drawHeader(c *Canvas) {
 	case a.benchRunning:
 		status = a.spinner() + " benchmarking"
 	}
-	if a.w-x > utf8.RuneCountInString(status)+1 {
+	name := fullName
+	if runeLen(name)+2 > a.w {
+		name = string([]rune(name)[:a.w-3]) + "…"
+	}
+	x := 1 + c.TextA(1, 0, name, cRain, attrBold)
+	if a.w-x > runeLen(status)+3 {
 		c.TextR(a.w-1, 0, status, cDim)
+	}
+
+	// breadcrumb row: SECTION › Screen  n/11        tab → next: X · m menu
+	x = 1
+	cur := a.screens[a.cur].title()
+	if e, ok := entryFor(a.cur); ok {
+		col := cText
+		for _, s := range menuSections {
+			if s.name == e.section {
+				col = s.col
+			}
+		}
+		x += c.TextA(x, 1, e.section, col, attrBold)
+		x += c.Text(x, 1, " › ", cFaint)
+		x += c.TextA(x, 1, cur, cWhite, a.hl())
+		for i, m := range menuEntries {
+			if m.screen == a.cur {
+				x += c.Text(x, 1, fmt.Sprintf("  step %d of %d", i+1, len(menuEntries)), cFaint)
+			}
+		}
+	} else {
+		x += c.TextA(x, 1, cur, cWhite, a.hl())
+	}
+	next := (a.cur + 1) % len(a.screens)
+	hint := "tab → " + a.screens[next].title()
+	if a.cur != scrMenu {
+		hint += "  ·  m menu"
+	}
+	if a.w-x > runeLen(hint)+3 {
+		c.TextR(a.w-1, 1, hint, cDim)
 	}
 }
 
@@ -467,7 +493,7 @@ func (a *App) drawKeybar(c *Canvas) {
 	y := a.h - 2
 	x := 1
 	all := append([]key.Binding{}, a.screens[a.cur].keys()...)
-	all = append(all, globalKeys.next, globalKeys.prev, globalKeys.run, globalKeys.help, globalKeys.quit)
+	all = append(all, globalKeys.menu, globalKeys.next, globalKeys.run, globalKeys.help, globalKeys.lang, globalKeys.quit)
 	for _, b := range all {
 		h := b.Help()
 		need := utf8.RuneCountInString(h.Key) + utf8.RuneCountInString(h.Desc) + 3
@@ -483,7 +509,10 @@ func (a *App) drawKeybar(c *Canvas) {
 
 func (a *App) drawHelp(c *Canvas) {
 	lines := []string{
-		"Screens: tab / shift+tab switch screens, r runs with current params.",
+		"Navigation:  m or esc  menu (all screens, grouped and explained)",
+		"             tab / shift+tab  next / previous screen in tour order",
+		"             r  run the experiment with current parameters",
+		"             L  English / Bahasa Indonesia (Menu, Guide, alerts)",
 		"",
 		"This screen:",
 	}
@@ -492,12 +521,13 @@ func (a *App) drawHelp(c *Canvas) {
 	}
 	lines = append(lines,
 		"",
-		"Model:  c = τ · w_m · (1 + β · E · φ(r)),  r = forecast rain (mm/h)",
+		"Model:  c = τ · w_m · (1 + β · E · φ(r_f)),  r_f = forecast rain (mm/h)",
 		"  φ(r) = (σ(r) − σ(0)) / (1 − σ(0)),  σ(r) = 1 / (1 + e^(−k(r − r0)))",
 		"  w_m 1.0 riding, 1.5 walk/wait.  E: walk/moto 1, BRT wait 0.4,",
 		"  rail wait 0.1, in-vehicle 0.",
 		"  A0 time · A1 threshold · A2 linear · A3 DP · A4 DP, wait enclosed",
 		"Routes are chosen on the forecast; outcomes scored on the true rain.",
+		"Every symbol is explained on the Symbols screen; why it works: Guide.",
 		"",
 		"esc or ? closes this help.",
 	)

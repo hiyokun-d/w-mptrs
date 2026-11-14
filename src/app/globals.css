@@ -124,7 +124,8 @@
   body {
     @apply bg-background text-foreground;
   }
-  button:not(:disabled), [role="button"]:not(:disabled) {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
     cursor: pointer;
   }
   html {
@@ -149,7 +150,157 @@
   opacity: 0.7;
 }
 @keyframes nearby-pulse {
-  0%   { transform: scale(0.7); opacity: 0.7; }
-  70%  { transform: scale(1.8); opacity: 0; }
-  100% { transform: scale(1.8); opacity: 0; }
+  0% {
+    transform: scale(0.7);
+    opacity: 0.7;
+  }
+  70% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+/* map route reveal (MapView): solid legs draw, dashed walks fade, in travel order */
+@keyframes route-draw {
+  from {
+    stroke-dashoffset: 3000;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes route-fade {
+  from {
+    opacity: 0;
+  }
+}
+.route-draw {
+  stroke-dasharray: 3000;
+  stroke-dashoffset: 3000;
+  animation: route-draw 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.route-fade {
+  animation: route-fade 0.4s ease-out both;
+}
+.rd1 {
+  animation-delay: 0.18s;
+}
+.rd2 {
+  animation-delay: 0.36s;
+}
+.rd3 {
+  animation-delay: 0.54s;
+}
+.rd4 {
+  animation-delay: 0.72s;
+}
+.rd5 {
+  animation-delay: 0.9s;
+}
+.rd6 {
+  animation-delay: 1.08s;
+}
+.rd7 {
+  animation-delay: 1.26s;
+}
+.rd8 {
+  animation-delay: 1.44s;
+}
+.rd9 {
+  animation-delay: 1.62s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .route-draw,
+  .route-fade {
+    animation: none;
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+  }
+}
+
+/* estimated vehicles: glide between 1 s ticks, but never while zooming */
+.leaflet-marker-icon.veh {
+  transition: transform 1s linear;
+}
+.leaflet-zoom-anim .leaflet-marker-icon.veh {
+  transition: none;
+}
+.veh-pill {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  border-radius: 9999px;
+  border: 2px solid white;
+  background: var(--c);
+  color: white;
+  font:
+    700 10px / 1 ui-sans-serif,
+    system-ui,
+    sans-serif;
+  padding: 3px 5px;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.35);
+}
+.veh-mine::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 9999px;
+  border: 2px solid var(--c);
+  animation: veh-pulse 1.6s ease-out infinite;
+}
+@keyframes veh-pulse {
+  from {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .leaflet-marker-icon.veh {
+    transition: none;
+  }
+  .veh-mine::after {
+    animation: none;
+  }
+}
+
+/* "you are here" on the GL map: a soft pulse */
+@keyframes w-ping {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+.w-ping {
+  animation: w-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* Slanted plate: the skew lives on a pseudo-element so the content is never
+   transformed. Nesting skewed parents and counter-skewed children leaves the
+   text blank in Safari. Set --sl-bg / --sl-sh / --sl-k per element. */
+@layer components {
+  .slant {
+    position: relative;
+    isolation: isolate;
+  }
+  .slant::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: var(--sl-bg, #fff);
+    box-shadow: var(--sl-sh, none);
+    transform: skewX(var(--sl-k, -12deg));
+  }
 }

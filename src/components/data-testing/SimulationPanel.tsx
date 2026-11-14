@@ -67,7 +67,7 @@ const SCENARIOS: ScenarioConfig[] = [
     key: "A",
     label: "Scenario A — Clear Skies",
     description:
-      "No rain. Fastest route (Motorcycle) should have 0 weather penalty. Modal shift must NOT trigger.",
+      "No rain. φ(0) = 0, so every segment's rain penalty is exactly 0 and the DP cost equals plain time. Modal shift must NOT trigger.",
     intensity: "none",
     wind: 8,
     humidity: 72,
@@ -78,7 +78,7 @@ const SCENARIOS: ScenarioConfig[] = [
     key: "B",
     label: "Scenario B — Heavy Rainfall (>20 mm/h)",
     description:
-      "Motorcycle penalty spikes to 40×1.0=40. System MUST shift recommended badge to MRT even if ETA is 15 min longer.",
+      "15 mm/h: the 20-min motorcycle segment gets +20 perceived min (E = 1, φ ≈ 1); MRT riding gets 0 (E = 0). The DP rule shifts only if the MRT trip's generalised cost (time + rain discomfort) is lower. With 9 min of walking and +16 min travel it is not at β = 1; a rain-averse user (β = 4) would shift.",
     intensity: "heavy",
     wind: 22,
     humidity: 94,
@@ -89,7 +89,7 @@ const SCENARIOS: ScenarioConfig[] = [
     key: "C",
     label: "Scenario C — Localized Storm at Destination",
     description:
-      "Origin (South Jakarta) is clear. Destination (Central Jakarta) has heavy rain. Last walk segment is 650m > 500m threshold — full walking penalty applies.",
+      "Origin (South Jakarta) is clear. Destination (Central Jakarta) has heavy rain. The 9-min destination walk is penalised in proportion to its minutes (τ · 1.5 · φ), not by a distance threshold.",
     intensity: "heavy",
     wind: 18,
     humidity: 91,

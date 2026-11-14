@@ -105,3 +105,45 @@ func TestSweepMonotoneAtExtremes(t *testing.T) {
 		}
 	}
 }
+
+func TestRouteSetupMatchesRun(t *testing.T) {
+	p := testParams()
+	res, err := Run(context.Background(), p, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	j := RouteSetup(res.Net, res.Journeys[3].Setup, p)
+	for v := range j.Out {
+		if j.Out[v].Dose != res.Journeys[3].Out[v].Dose || j.Out[v].T != res.Journeys[3].Out[v].T {
+			t.Fatalf("variant %d differs from Run", v)
+		}
+	}
+	_, fc := EdgeRain(res.Net, j.Setup)
+	s := j.Setup
+	tr := TraceShortest(res.Net, model.A3, p.Model(), fc, WalkNode(s.OX, s.OY), WalkNode(s.DX, s.DY))
+	if len(tr.Path) == 0 || len(tr.Settled) == 0 {
+		t.Fatal("trace found no path")
+	}
+}
+
+func TestRainAheadAlerts(t *testing.T) {
+	net := NewNetwork(2026)
+	mp := Presets()[0].Params.Model()
+	s := Setup{OX: 3, OY: 3, DX: 27, DY: 13, Cells: []Cell{{X: 2, Y: 15, Peak: 25, Radius: 3}}}
+	m := Motion{VX: 0.2, VY: -0.1}
+	zero := make([]float64, net.NumEdges())
+	a0 := Choose(net, s, model.A0, mp, zero, m)
+	ahead := Choose(net, s, model.A3, mp, FieldAhead(net, s, m), m)
+	if ahead.Dose >= a0.Dose/2 {
+		t.Fatalf("motion-aware DP should avoid the incoming storm: %.2f vs %.2f", ahead.Dose, a0.Dose)
+	}
+	al := PlanAlerts(net, a0, 15)
+	if len(al) == 0 || al[0].Covered || al[0].IssueAt > al[0].MeetAt || al[0].PrepAt > al[0].MeetAt {
+		t.Fatalf("expected a raincoat alert ahead of the rain, got %+v", al)
+	}
+	// a dry trip gets no alert
+	dry := Choose(net, Setup{OX: 3, OY: 3, DX: 27, DY: 13}, model.A0, mp, zero, m)
+	if len(PlanAlerts(net, dry, 15)) != 0 {
+		t.Fatal("dry trip produced an alert")
+	}
+}

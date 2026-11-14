@@ -38,7 +38,7 @@ func Sweep(ctx context.Context, p Params, onDone func(done, total int)) ([]Sweep
 			cfgs = append(cfgs, Config{fam, mp})
 		}
 	}
-	ev := &evaluator{net: net, cfgs: cfgs, r0: p.R0}
+	ev := &evaluator{net: net, cfgs: cfgs, r0: p.R0, sh: p.Shelter}
 	var cb func(int, *Journey)
 	if onDone != nil {
 		cb = func(d int, _ *Journey) { onDone(d, len(setups)) }

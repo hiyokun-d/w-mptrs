@@ -79,15 +79,14 @@ src/
 ```
 
 ## Discomfort Penalty Engine (`src/lib/routing/discomfort.ts`)
-Core research algorithm. Base penalties:
-- `motorcycle` → +40 (×rainfall multiplier)
-- `walking` → +25 (×multiplier; ×0.5 if walk < 500m)
-- `transjakarta/mrt/lrt` → +2–3 flat (sheltered, no multiplier)
-- `car` → +8, `bicycle` → +20
+Core research algorithm — the same model the paper evaluates in `wmptrs-sim/`:
+- Segment cost `c = τ · w_m · (1 + β · E · φ(r))`, τ = minutes, r = rain mm/h
+- `φ(r) = (σ(r) − σ(0)) / (1 − σ(0))`, `σ(r) = 1/(1 + e^(−k(r − r0)))`, defaults β = 1, r0 = 5, k = 0.74
+- `w_m`: walking 1.5, everything else 1.0 · `E`: walking/motorcycle/bicycle 1, car and transit 0 (waits not priced — see paper ablation A4)
+- Category → mm/h: none 0, light 3, moderate 7.5, heavy 15, extreme 30 (`RAIN_MMH`; pass `rainMmh` for exact values)
+- `finalPenalty` = rain discomfort in perceived minutes (+ app-only wind/humidity extras, not part of the evaluated model)
 
-Rainfall multipliers: none=0, light=0.3, moderate=0.65, heavy=1.0, extreme=1.4
-
-Modal shift triggered when score diff ≥ 10 between fastest and weather-aware route.
+Modal shift: recommended exactly when the weather-aware route's generalised cost (time + discomfort) is lower — no fixed score threshold.
 
 ## Simulation Mode
 `GET /api/weather?lat=X&lng=Y&simulate=heavy` — returns synthetic weather data.

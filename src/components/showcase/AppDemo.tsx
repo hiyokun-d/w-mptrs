@@ -1241,7 +1241,7 @@ function DiscomfortBreakdown({
             {MODE_ICON[b.mode]}
             <span className="capitalize font-medium">{b.mode}</span>
             <span className={cn("ml-auto font-bold font-mono", scoreColor(b.finalPenalty))}>
-              {b.finalPenalty} pts
+              +{b.finalPenalty} min
             </span>
           </div>
           <p className="text-slate-500 leading-relaxed">{b.reason}</p>

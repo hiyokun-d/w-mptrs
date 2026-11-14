@@ -28,7 +28,7 @@ type BenchResult struct {
 func Bench(ctx context.Context, p Params, journeys, reps int) (*BenchResult, error) {
 	net := NewNetwork(p.Seed)
 	setups := GenSetups(journeys, p.Seed, p.Sigma, p.Shift)
-	ev := &evaluator{net: net, cfgs: VariantConfigs(p.Model()), r0: p.R0}
+	ev := &evaluator{net: net, cfgs: VariantConfigs(p.Model()), r0: p.R0, sh: p.Shelter}
 	res := &BenchResult{Nodes: net.NumNodes, Edges: net.NumEdges()}
 	samples := make([][]float64, model.NumVariants)
 	for r := 0; r < reps; r++ {
